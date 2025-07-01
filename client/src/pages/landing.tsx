@@ -16,7 +16,13 @@ import {
   CheckCircle, 
   Users,
   BarChart3,
-  MessageSquare
+  MessageSquare,
+  Map,
+  UserCheck,
+  Award,
+  Gift,
+  Facebook,
+  Instagram
 } from "lucide-react";
 
 export default function Landing() {
@@ -52,42 +58,42 @@ export default function Landing() {
 
   const features = [
     {
-      icon: "fab fa-whatsapp",
+      icon: MessageSquare,
       title: "Pesan via WhatsApp",
       description: "Tidak perlu install aplikasi. Pesan langsung via WhatsApp dengan AI assistant yang membantu 24/7"
     },
     {
-      icon: "fas fa-map-marked-alt",
+      icon: Map,
       title: "Live Tracking",
       description: "Pantau teknisi secara real-time dari berangkat hingga selesai dengan notifikasi otomatis"
     },
     {
-      icon: "fas fa-user-check",
+      icon: UserCheck,
       title: "Teknisi Terverifikasi",
       description: "Semua teknisi telah melewati proses seleksi ketat dan pelatihan profesional"
     },
     {
-      icon: "fas fa-credit-card",
+      icon: CreditCard,
       title: "Pembayaran Fleksibel",
       description: "Bayar cash, QRIS, transfer bank, e-wallet, atau kartu kredit sesuai kenyamanan Anda"
     },
     {
-      icon: "fas fa-shield-alt",
+      icon: Shield,
       title: "Garansi Layanan",
       description: "Jaminan kepuasan 100% dengan garansi ulang gratis jika tidak puas dengan hasil"
     },
     {
-      icon: "fas fa-star",
+      icon: Gift,
       title: "Program Membership",
       description: "Dapatkan diskon dan benefit eksklusif dengan sistem membership bertingkat"
     }
   ];
 
   const stats = [
-    { icon: BarChart3, label: "Total Pesanan Hari Ini", value: "247", change: "+12% dari kemarin" },
+    { icon: BarChart3, label: "Total Pesanan Selama Ini", value: "15,247", change: "Dalam 2 tahun operasi" },
     { icon: Users, label: "Teknisi Aktif", value: "18", change: "Semua tersedia" },
-    { icon: CreditCard, label: "Pendapatan Bulan Ini", value: "Rp 12.5M", change: "+28% dari bulan lalu" },
-    { icon: Star, label: "Rating Rata-rata", value: "4.8", change: "958 ulasan" }
+    { icon: CheckCircle, label: "Tingkat Kepuasan", value: "98%", change: "Dari 1,245 ulasan" },
+    { icon: Star, label: "Rating Rata-rata", value: "4.8", change: "958 ulasan terverifikasi" }
   ];
 
   return (
@@ -119,7 +125,7 @@ export default function Landing() {
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white text-white hover:bg-white hover:text-primary transition-all duration-300"
+                  className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
                 >
                   Lihat Harga
                 </Button>
@@ -130,21 +136,21 @@ export default function Landing() {
               <Card className="bg-white/10 backdrop-blur-sm border-white/20">
                 <CardContent className="p-8">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/20 rounded-lg p-4 text-center">
-                      <Bike className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Cuci Motor</p>
+                    <div className="bg-white/20 rounded-lg p-4 text-center text-white">
+                      <Bike className="w-8 h-8 mx-auto mb-2 text-white" />
+                      <p className="text-sm text-white">Cuci Motor</p>
                     </div>
-                    <div className="bg-white/20 rounded-lg p-4 text-center">
-                      <Car className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Cuci Mobil</p>
+                    <div className="bg-white/20 rounded-lg p-4 text-center text-white">
+                      <Car className="w-8 h-8 mx-auto mb-2 text-white" />
+                      <p className="text-sm text-white">Cuci Mobil</p>
                     </div>
-                    <div className="bg-white/20 rounded-lg p-4 text-center">
-                      <Leaf className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Potong Rumput</p>
+                    <div className="bg-white/20 rounded-lg p-4 text-center text-white">
+                      <Leaf className="w-8 h-8 mx-auto mb-2 text-white" />
+                      <p className="text-sm text-white">Potong Rumput</p>
                     </div>
                     <div className="bg-yellow-400/90 rounded-lg p-4 text-center text-gray-800">
-                      <Clock className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm font-semibold">24/7 Service</p>
+                      <Clock className="w-8 h-8 mx-auto mb-2 text-gray-800" />
+                      <p className="text-sm font-semibold text-gray-800">24/7 Service</p>
                     </div>
                   </div>
                 </CardContent>
@@ -229,7 +235,7 @@ export default function Landing() {
             {features.map((feature, index) => (
               <div key={index} className="text-center">
                 <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-6 flex items-center justify-center">
-                  <i className={`${feature.icon} text-primary text-2xl`}></i>
+                  <feature.icon className="w-8 h-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
@@ -251,19 +257,18 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
-              variant="secondary" 
-              className="bg-white text-primary hover:bg-gray-100"
+              className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
               onClick={() => window.location.href = "/api/login"}
             >
-              <i className="fab fa-whatsapp mr-3 text-xl"></i>
+              <MessageSquare className="w-5 h-5 mr-3" />
               Pesan via WhatsApp
             </Button>
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-white text-white hover:bg-white hover:text-primary"
+              className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
             >
-              Download Aplikasi
+              Lihat Harga
             </Button>
           </div>
         </div>
@@ -288,13 +293,13 @@ export default function Landing() {
               </p>
               <div className="flex space-x-4">
                 <a href="#" className="text-gray-400 hover:text-primary transition-colors">
-                  <i className="fab fa-facebook-f"></i>
+                  <Facebook className="w-5 h-5" />
                 </a>
                 <a href="#" className="text-gray-400 hover:text-primary transition-colors">
-                  <i className="fab fa-instagram"></i>
+                  <Instagram className="w-5 h-5" />
                 </a>
                 <a href="#" className="text-gray-400 hover:text-primary transition-colors">
-                  <i className="fab fa-whatsapp"></i>
+                  <MessageSquare className="w-5 h-5" />
                 </a>
               </div>
             </div>
@@ -340,10 +345,10 @@ export default function Landing() {
       <div className="fixed bottom-6 right-6 z-50">
         <Button 
           size="lg" 
-          className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 animate-float"
+          className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 animate-bounce shadow-lg"
           onClick={() => window.location.href = "/api/login"}
         >
-          <i className="fab fa-whatsapp text-2xl"></i>
+          <MessageSquare className="w-8 h-8" />
         </Button>
       </div>
     </div>
