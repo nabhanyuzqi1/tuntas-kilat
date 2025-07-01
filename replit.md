@@ -103,7 +103,13 @@ The application is configured for deployment on Replit with the following setup:
 ## Changelog
 
 Changelog:
-- July 01, 2025. Initial setup
+- July 01, 2025. Initial setup with complete application infrastructure
+- July 01, 2025. AI-powered chatbot integration using Google Gemini API
+  - Created comprehensive Gemini AI service (server/gemini.ts)
+  - Integrated chatbot API endpoints in routes.ts
+  - Enhanced WhatsApp interface with real-time AI responses
+  - Added sentiment analysis and smart quick replies
+  - Implemented conversation flow with booking actions
 
 ## User Preferences
 

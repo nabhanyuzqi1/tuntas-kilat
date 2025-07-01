@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertOrderSchema, insertServiceSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
+import { processCustomerMessage, generateOrderSummary, analyzeCustomerSentiment } from "./gemini";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -324,34 +325,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversation = await storage.addMessageToConversation(conversationId, message);
       
       if (sender === 'customer') {
-        // Simple AI response logic
-        let aiResponse = '';
-        const lowerContent = content.toLowerCase();
-        
-        if (lowerContent.includes('cuci motor') || lowerContent.includes('motor')) {
-          aiResponse = 'Untuk cuci motor, kami memiliki paket Basic (Rp 25.000) dan Premium (Rp 35.000). Mau pilih yang mana? Dan di mana lokasinya?';
-        } else if (lowerContent.includes('cuci mobil') || lowerContent.includes('mobil')) {
-          aiResponse = 'Paket cuci mobil tersedia Basic (Rp 50.000) dan Premium (Rp 75.000). Lokasi dimana? Dan kapan jadwalnya?';
-        } else if (lowerContent.includes('potong rumput') || lowerContent.includes('rumput')) {
-          aiResponse = 'Untuk potong rumput, harga mulai dari Rp 75.000 tergantung luas area. Bisa kirim foto halaman rumahnya?';
-        } else if (lowerContent.includes('harga') || lowerContent.includes('berapa')) {
-          aiResponse = 'Berikut daftar harga layanan kami:\n🏍️ Cuci Motor: Rp 25.000 - 35.000\n🚗 Cuci Mobil: Rp 50.000 - 75.000\n🌿 Potong Rumput: Mulai Rp 75.000\n\nMau pesan yang mana?';
-        } else {
-          aiResponse = 'Halo! Saya Gercep Assistant 👋 Saya bisa membantu Anda memesan layanan cuci motor, cuci mobil, atau potong rumput. Ada yang bisa saya bantu?';
+        // AI-powered response using Gemini
+        try {
+          const botResponse = await processCustomerMessage(content, {
+            conversationId,
+            customerId: req.user.claims.sub
+          });
+          
+          // Analyze sentiment
+          const sentiment = await analyzeCustomerSentiment(content);
+          
+          const aiMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            content: botResponse.message,
+            timestamp: new Date(),
+            metadata: {
+              quickReplies: botResponse.quickReplies,
+              bookingAction: botResponse.bookingAction,
+              sentiment: sentiment,
+              confidence: sentiment.confidence
+            }
+          };
+          
+          await storage.addMessageToConversation(conversationId, aiMessage);
+        } catch (error) {
+          console.error("Error processing AI response:", error);
+          // Fallback response
+          const fallbackMessage = {
+            id: (Date.now() + 1).toString(),
+            sender: 'ai',
+            content: 'Maaf, ada gangguan teknis. Silakan coba lagi atau hubungi customer service kami di nomor WhatsApp.',
+            timestamp: new Date(),
+            metadata: {
+              quickReplies: ['🔄 Coba Lagi', '📞 Hubungi CS'],
+              isError: true
+            }
+          };
+          
+          await storage.addMessageToConversation(conversationId, fallbackMessage);
         }
-        
-        const aiMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          content: aiResponse,
-          timestamp: new Date(),
-          metadata: {
-            intent: 'service_inquiry',
-            confidence: 0.8
-          }
-        };
-        
-        await storage.addMessageToConversation(conversationId, aiMessage);
       }
       
       res.json(conversation);
@@ -412,6 +425,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching promotion:", error);
       res.status(500).json({ message: "Failed to fetch promotion" });
+    }
+  });
+
+  // Chatbot API endpoints
+  app.post('/api/chatbot/message', async (req, res) => {
+    try {
+      const { message, context } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      
+      const botResponse = await processCustomerMessage(message, context);
+      const sentiment = await analyzeCustomerSentiment(message);
+      
+      res.json({
+        ...botResponse,
+        sentiment,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Error processing chatbot message:", error);
+      res.status(500).json({ 
+        message: "Maaf, ada gangguan teknis. Silakan coba lagi.",
+        quickReplies: ['🔄 Coba Lagi', '📞 Hubungi CS'],
+        error: true
+      });
+    }
+  });
+
+  app.post('/api/chatbot/order-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const orderData = req.body;
+      const summary = await generateOrderSummary(orderData);
+      
+      res.json({
+        summary,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error("Error generating order summary:", error);
+      res.status(500).json({ 
+        message: "Failed to generate order summary",
+        error: true
+      });
     }
   });
 

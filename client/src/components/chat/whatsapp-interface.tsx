@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, Clock } from "lucide-react";
+import { Bot, Send, Clock, User, Loader2 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 
 interface Message {
   id: string;
@@ -12,6 +14,14 @@ interface Message {
   content: string;
   timestamp: Date;
   quickReplies?: string[];
+  bookingAction?: {
+    type: 'view_services' | 'start_booking' | 'check_order';
+    data?: any;
+  };
+  sentiment?: {
+    rating: number;
+    confidence: number;
+  };
 }
 
 export default function WhatsAppInterface() {
@@ -19,37 +29,49 @@ export default function WhatsAppInterface() {
     {
       id: '1',
       sender: 'ai',
-      content: 'Halo! Saya Gercep Assistant 👋\nMau cuci motor, mobil, atau potong rumput?',
-      timestamp: new Date(Date.now() - 300000), // 5 minutes ago
-    },
-    {
-      id: '2',
-      sender: 'customer',
-      content: 'Mau cuci motor dong',
-      timestamp: new Date(Date.now() - 240000), // 4 minutes ago
-    },
-    {
-      id: '3',
-      sender: 'ai',
-      content: 'Siap! Untuk cuci motor, kami punya paket:\n🏍️ Basic (Rp 25.000)\n🏍️ Premium (Rp 35.000)\n\nMau yang mana? Dan lokasi dimana?',
-      timestamp: new Date(Date.now() - 180000), // 3 minutes ago
-    },
-    {
-      id: '4',
-      sender: 'customer',
-      content: 'Basic aja. Lokasi Jl. Merdeka No 123',
-      timestamp: new Date(Date.now() - 120000), // 2 minutes ago
-    },
-    {
-      id: '5',
-      sender: 'ai',
-      content: 'Oke! Paket Basic Rp 25.000\n📍 Jl. Merdeka No 123\n\nMau dijadwalkan kapan?',
-      timestamp: new Date(Date.now() - 60000), // 1 minute ago
-      quickReplies: ['Sekarang juga', 'Pilih waktu lain']
+      content: 'Halo! Saya Gercep Assistant 👋\nSaya bisa membantu Anda memesan layanan cuci kendaraan dan potong rumput.\n\nMau pesan layanan apa hari ini?',
+      timestamp: new Date(),
+      quickReplies: ['🏍️ Cuci Motor', '🚗 Cuci Mobil', '🌿 Potong Rumput', '💰 Lihat Harga']
     }
   ]);
   
   const [inputMessage, setInputMessage] = useState('');
+
+  // AI chatbot mutation
+  const chatbotMutation = useMutation({
+    mutationFn: async (message: string) => {
+      return await apiRequest('/api/chatbot/message', 'POST', {
+        message,
+        context: {
+          messagesCount: messages.length,
+          lastMessageTime: messages[messages.length - 1]?.timestamp
+        }
+      });
+    },
+    onSuccess: (response: any) => {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        content: response.message,
+        timestamp: new Date(response.timestamp),
+        quickReplies: response.quickReplies,
+        bookingAction: response.bookingAction,
+        sentiment: response.sentiment
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    },
+    onError: (error) => {
+      console.error('Chatbot error:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        content: 'Maaf, ada gangguan teknis. Silakan coba lagi atau hubungi customer service kami.',
+        timestamp: new Date(),
+        quickReplies: ['🔄 Coba Lagi', '📞 Hubungi CS']
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  });
 
   const handleSendMessage = (message: string) => {
     if (!message.trim()) return;
@@ -64,28 +86,8 @@ export default function WhatsAppInterface() {
     setMessages(prev => [...prev, newMessage]);
     setInputMessage('');
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: 'ai',
-        content: getAIResponse(message),
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
-  };
-
-  const getAIResponse = (message: string): string => {
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes('sekarang')) {
-      return 'Perfect! Teknisi terdekat akan kami assign untuk Anda.\n\n✅ Pesanan dikonfirmasi\n🕐 Estimasi kedatangan: 30 menit\n💰 Total: Rp 25.000\n\nAnda akan mendapat notifikasi WhatsApp dengan detail teknisi. Terima kasih! 🙏';
-    } else if (lowerMessage.includes('waktu lain')) {
-      return 'Baik, silakan pilih waktu yang Anda inginkan:\n\n📅 Hari ini (13:00 - 17:00)\n📅 Besok (08:00 - 17:00)\n📅 Pilih tanggal lain\n\nKetik pilihan atau langsung tulis waktu yang diinginkan.';
-    } else {
-      return 'Maaf, bisa diperjelas? Atau pilih opsi yang tersedia di atas. Jika butuh bantuan, ketik "bantuan" 😊';
-    }
+    // Send message to AI backend
+    chatbotMutation.mutate(message);
   };
 
   const formatTime = (date: Date): string => {
@@ -120,38 +122,56 @@ export default function WhatsAppInterface() {
             {messages.map((message) => (
               <div key={message.id}>
                 <div className={`flex ${message.sender === 'customer' ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    className={`max-w-xs rounded-lg p-3 shadow-sm ${
-                      message.sender === 'customer'
-                        ? 'bg-[#DCF8C6] chat-bubble-sent'
-                        : 'bg-white chat-bubble-received'
-                    }`}
-                  >
-                    <p className="text-sm text-gray-800 whitespace-pre-line">
-                      {message.content}
-                    </p>
-                    <div className="flex items-center justify-end mt-1 space-x-1">
-                      <span className="text-xs text-gray-500">
-                        {formatTime(message.timestamp)}
-                      </span>
-                      {message.sender === 'customer' && (
-                        <span className="text-xs text-gray-500">✓✓</span>
-                      )}
+                  <div className={`flex items-start space-x-2 ${message.sender === 'customer' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                    {message.sender === 'ai' && (
+                      <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                    )}
+                    {message.sender === 'customer' && (
+                      <div className="w-8 h-8 bg-gray-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-xs rounded-lg p-3 shadow-sm ${
+                        message.sender === 'customer'
+                          ? 'bg-[#DCF8C6] chat-bubble-sent'
+                          : 'bg-white chat-bubble-received'
+                      }`}
+                    >
+                      <p className="text-sm text-gray-800 whitespace-pre-line">
+                        {message.content}
+                      </p>
+                      <div className="flex items-center justify-end mt-1 space-x-1">
+                        <span className="text-xs text-gray-500">
+                          {formatTime(message.timestamp)}
+                        </span>
+                        {message.sender === 'customer' && (
+                          <span className="text-xs text-gray-500">✓✓</span>
+                        )}
+                        {message.sentiment && message.sender === 'ai' && (
+                          <Badge variant="secondary" className="text-xs ml-1">
+                            {message.sentiment.rating >= 4 ? '😊' : message.sentiment.rating <= 2 ? '😔' : '😐'}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Quick Replies */}
                 {message.quickReplies && (
-                  <div className="flex justify-start mt-2">
-                    <div className="max-w-xs space-y-2">
+                  <div className="flex justify-start mt-2 ml-10">
+                    <div className="max-w-xs space-y-1">
                       {message.quickReplies.map((reply, index) => (
                         <Button
                           key={index}
                           variant="outline"
                           size="sm"
-                          className="block w-full text-left bg-white hover:bg-gray-50 text-primary border-primary"
+                          className="block w-full text-left bg-white hover:bg-gray-50 text-primary border-primary text-xs"
                           onClick={() => handleSendMessage(reply)}
+                          disabled={chatbotMutation.isPending}
                         >
                           {reply}
                         </Button>
@@ -161,6 +181,23 @@ export default function WhatsAppInterface() {
                 )}
               </div>
             ))}
+            
+            {/* Loading indicator */}
+            {chatbotMutation.isPending && (
+              <div className="flex justify-start">
+                <div className="flex items-start space-x-2">
+                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      <span className="text-sm text-gray-600">Sedang mengetik...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
