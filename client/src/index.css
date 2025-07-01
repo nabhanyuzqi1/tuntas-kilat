@@ -90,11 +90,11 @@
 }
 
 .text-primary {
-  color: hsl(175, 84%, 40%);
+  color: hsl(175, 84%, 40%) !important;
 }
 
 .bg-primary {
-  background-color: hsl(175, 84%, 40%);
+  background-color: hsl(175, 84%, 40%) !important;
 }
 
 .border-primary {
@@ -102,7 +102,46 @@
 }
 
 .hover\:bg-primary:hover {
-  background-color: hsl(175, 80%, 35%);
+  background-color: hsl(175, 80%, 35%) !important;
+}
+
+/* Button improvements */
+.btn-primary {
+  background: linear-gradient(135deg, hsl(175, 84%, 40%) 0%, hsl(175, 80%, 35%) 100%);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, hsl(175, 80%, 35%) 0%, hsl(175, 76%, 30%) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsla(175, 84%, 40%, 0.3);
+}
+
+/* Text color improvements */
+.text-gray-900 {
+  color: hsl(0, 0%, 10%) !important;
+}
+
+.text-gray-700 {
+  color: hsl(0, 0%, 25%) !important;
+}
+
+.text-gray-600 {
+  color: hsl(0, 0%, 35%) !important;
+}
+
+.text-gray-500 {
+  color: hsl(0, 0%, 45%) !important;
+}
+
+/* Hover effects */
+.hover\:text-primary:hover {
+  color: hsl(175, 84%, 40%) !important;
+}
+
+.hover\:bg-gray-50:hover {
+  background-color: hsl(60, 9%, 97%) !important;
 }
 
 /* WhatsApp style chat bubbles */

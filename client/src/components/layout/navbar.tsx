@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Logo from "@/components/ui/logo";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
-  Car, 
   Menu, 
   User, 
   Settings, 
@@ -71,28 +71,20 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/">
-            <div className="flex items-center space-x-3 cursor-pointer">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Car className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Ambon Gercep</h1>
-                <p className="text-xs text-gray-500">Service On Demand</p>
-              </div>
-            </div>
+            <Logo size="md" className="cursor-pointer" />
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             {navigation.map((item) => (
               <Link key={item.name} href={item.href}>
-                <a className={`transition-colors ${
+                <span className={`cursor-pointer transition-colors ${
                   item.current 
                     ? 'text-primary font-semibold' 
                     : 'text-gray-700 hover:text-primary'
                 }`}>
                   {item.name}
-                </a>
+                </span>
               </Link>
             ))}
           </div>
@@ -134,10 +126,10 @@ export default function Navbar() {
                     {userNavigation.map((item) => (
                       <DropdownMenuItem key={item.name} asChild>
                         <Link href={item.href}>
-                          <a className="flex items-center space-x-2 w-full">
+                          <div className="flex items-center space-x-2 w-full cursor-pointer">
                             <item.icon className="w-4 h-4" />
                             <span>{item.name}</span>
-                          </a>
+                          </div>
                         </Link>
                       </DropdownMenuItem>
                     ))}
@@ -162,7 +154,7 @@ export default function Navbar() {
               </>
             ) : (
               <Button 
-                className="bg-primary hover:bg-primary/90"
+                className="btn-primary"
                 onClick={() => window.location.href = "/api/login"}
               >
                 <MessageSquare className="w-4 h-4 mr-2" />
@@ -180,22 +172,16 @@ export default function Navbar() {
               <SheetContent side="right" className="w-72">
                 <div className="flex flex-col h-full">
                   {/* Mobile Logo */}
-                  <div className="flex items-center space-x-3 pb-6 border-b">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                      <Car className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="font-bold text-gray-900">Ambon Gercep</h1>
-                      <p className="text-xs text-gray-500">Service On Demand</p>
-                    </div>
+                  <div className="pb-6 border-b">
+                    <Logo size="sm" />
                   </div>
 
                   {/* Mobile Navigation */}
                   <div className="py-6 space-y-4">
                     {navigation.map((item) => (
                       <Link key={item.name} href={item.href}>
-                        <a 
-                          className={`block px-3 py-2 text-base transition-colors ${
+                        <div 
+                          className={`block px-3 py-2 text-base transition-colors cursor-pointer ${
                             item.current 
                               ? 'text-primary font-semibold bg-primary/5 rounded-lg' 
                               : 'text-gray-700'
@@ -203,7 +189,7 @@ export default function Navbar() {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {item.name}
-                        </a>
+                        </div>
                       </Link>
                     ))}
                   </div>
@@ -227,13 +213,13 @@ export default function Navbar() {
                         <div className="space-y-2">
                           {userNavigation.map((item) => (
                             <Link key={item.name} href={item.href}>
-                              <a 
-                                className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+                              <div 
+                                className="flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 <item.icon className="w-4 h-4" />
                                 <span>{item.name}</span>
-                              </a>
+                              </div>
                             </Link>
                           ))}
                         </div>
@@ -259,7 +245,7 @@ export default function Navbar() {
                   {!isAuthenticated && (
                     <div className="border-t pt-6 mt-auto">
                       <Button 
-                        className="w-full"
+                        className="w-full btn-primary"
                         onClick={() => {
                           window.location.href = "/api/login";
                           setMobileMenuOpen(false);

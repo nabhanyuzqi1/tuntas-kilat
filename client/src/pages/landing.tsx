@@ -15,7 +15,8 @@ import {
   MapPin, 
   CheckCircle, 
   Users,
-  BarChart3
+  BarChart3,
+  MessageSquare
 } from "lucide-react";
 
 export default function Landing() {
@@ -109,17 +110,16 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
                   size="lg" 
-                  variant="secondary" 
-                  className="bg-white text-primary hover:bg-gray-100"
+                  className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
                   onClick={() => window.location.href = "/api/login"}
                 >
-                  <i className="fab fa-whatsapp mr-3 text-xl"></i>
+                  <MessageSquare className="w-5 h-5 mr-3" />
                   Pesan via WhatsApp
                 </Button>
                 <Button 
                   size="lg" 
                   variant="outline" 
-                  className="border-white text-white hover:bg-white hover:text-primary"
+                  className="border-white text-white hover:bg-white hover:text-primary transition-all duration-300"
                 >
                   Lihat Harga
                 </Button>

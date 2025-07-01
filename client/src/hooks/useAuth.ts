@@ -8,12 +8,17 @@ export function useAuth() {
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    enabled: false, // Disable automatic queries
   });
 
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
+    user: null, // For now, assume no user until login is implemented
+    isLoading: false,
+    isAuthenticated: false,
   };
 }
