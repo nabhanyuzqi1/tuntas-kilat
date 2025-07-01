@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navbar from "@/components/layout/navbar";
 import ServiceCard from "@/components/services/service-card";
 import WhatsAppInterface from "@/components/chat/whatsapp-interface";
@@ -22,10 +24,13 @@ import {
   Award,
   Gift,
   Facebook,
-  Instagram
+  Instagram,
+  X
 } from "lucide-react";
 
 export default function Landing() {
+  const [showChat, setShowChat] = useState(false);
+  
   const services = [
     {
       id: 1,
@@ -346,11 +351,28 @@ export default function Landing() {
         <Button 
           size="lg" 
           className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 animate-bounce shadow-lg"
-          onClick={() => window.location.href = "/api/login"}
+          onClick={() => setShowChat(true)}
         >
           <MessageSquare className="w-8 h-8" />
         </Button>
       </div>
+
+      {/* WhatsApp Chat Dialog */}
+      <Dialog open={showChat} onOpenChange={setShowChat}>
+        <DialogContent className="sm:max-w-md p-0 bg-transparent border-none shadow-none">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute -top-2 -right-2 z-10 bg-white hover:bg-gray-100 rounded-full w-8 h-8 p-0 shadow-md"
+              onClick={() => setShowChat(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+            <WhatsAppInterface />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
