@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(175, 84%, 40%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(215, 20%, 65%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  --chart-1: hsl(175, 84%, 40%);
+  --chart-2: hsl(43, 96%, 56%);
+  --chart-3: hsl(142, 76%, 36%);
+  --chart-4: hsl(0, 84%, 60%);
+  --chart-5: hsl(215, 20%, 65%);
+  --sidebar-background: hsl(0, 0%, 98%);
+  --sidebar-foreground: hsl(240, 5.3%, 26.1%);
+  --sidebar-primary: hsl(175, 84%, 40%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(220, 14.3%, 95.9%);
+  --sidebar-accent-foreground: hsl(220, 8.9%, 46.1%);
+  --sidebar-border: hsl(220, 13%, 91%);
+  --sidebar-ring: hsl(217.2, 10.6%, 64.9%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(175, 84%, 40%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  --chart-1: hsl(175, 84%, 40%);
+  --chart-2: hsl(43, 96%, 56%);
+  --chart-3: hsl(142, 76%, 36%);
+  --chart-4: hsl(0, 84%, 60%);
+  --chart-5: hsl(215, 20%, 65%);
+  --sidebar-background: hsl(240, 5.9%, 10%);
+  --sidebar-foreground: hsl(240, 4.8%, 95.9%);
+  --sidebar-primary: hsl(175, 84%, 40%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(240, 3.7%, 15.9%);
+  --sidebar-accent-foreground: hsl(240, 4.8%, 95.9%);
+  --sidebar-border: hsl(240, 3.7%, 15.9%);
+  --sidebar-ring: hsl(240, 4.9%, 83.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Custom styles for Ambon Gercep */
+.bg-stone {
+  background-color: hsl(60, 9%, 98%);
+}
+
+.text-primary {
+  color: hsl(175, 84%, 40%);
+}
+
+.bg-primary {
+  background-color: hsl(175, 84%, 40%);
+}
+
+.border-primary {
+  border-color: hsl(175, 84%, 40%);
+}
+
+.hover\:bg-primary:hover {
+  background-color: hsl(175, 80%, 35%);
+}
+
+/* WhatsApp style chat bubbles */
+.chat-bubble-sent {
+  background-color: hsl(120, 100%, 87%);
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.chat-bubble-received {
+  background-color: hsl(0, 0%, 100%);
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(175, 84%, 40%) 0%, hsl(175, 80%, 35%) 100%);
+}
+
+/* Animation utilities */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Status indicators */
+.status-pending {
+  background-color: hsl(43, 96%, 56%);
+}
+
+.status-confirmed {
+  background-color: hsl(175, 84%, 40%);
+}
+
+.status-completed {
+  background-color: hsl(142, 76%, 36%);
+}
+
+.status-cancelled {
+  background-color: hsl(0, 84%, 60%);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(60, 4.8%, 95.9%);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(175, 84%, 40%);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(175, 80%, 35%);
+}
