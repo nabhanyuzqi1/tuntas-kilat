@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Profile images - users can upload their own
+    match /profile-images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Order attachments - customers and assigned workers can access
+    match /order-attachments/{orderId}/{allPaths=**} {
+      allow read, write: if request.auth != null &&
+        (resource.metadata.uploadedBy == request.auth.uid ||
+         exists(/databases/(default)/documents/orders/$(orderId)) &&
+         (get(/databases/(default)/documents/orders/$(orderId)).data.customerId == request.auth.uid ||
+          get(/databases/(default)/documents/orders/$(orderId)).data.workerId == request.auth.uid));
+    }
+    
+    // Service images - admins can upload, all can read
+    match /service-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan'];
+    }
+    
+    // Chat attachments - conversation participants can access
+    match /chat-attachments/{conversationId}/{allPaths=**} {
+      allow read, write: if request.auth != null &&
+        exists(/databases/(default)/documents/conversations/$(conversationId)) &&
+        get(/databases/(default)/documents/conversations/$(conversationId)).data.customerId == request.auth.uid;
+    }
+  }
+}

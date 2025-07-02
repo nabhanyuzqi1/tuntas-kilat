@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+                     resource.data.role in ['admin_umum', 'admin_perusahaan'];
+    }
+    
+    // Services collection - readable by all authenticated users
+    match /services/{serviceId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan'];
+    }
+    
+    // Workers collection - workers can read/write their own data
+    match /workers/{workerId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                     (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan'] ||
+                      resource.data.userId == request.auth.uid);
+    }
+    
+    // Orders collection - customers can read their orders, workers can read assigned orders
+    match /orders/{orderId} {
+      allow read: if request.auth != null && 
+                     (resource.data.customerId == request.auth.uid ||
+                      resource.data.workerId == get(/databases/$(database)/documents/workers/$(resource.data.workerId)).data.userId ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan']);
+      
+      allow create: if request.auth != null && 
+                       request.resource.data.customerId == request.auth.uid;
+      
+      allow update: if request.auth != null && 
+                       (resource.data.customerId == request.auth.uid ||
+                        resource.data.workerId == get(/databases/$(database)/documents/workers/$(resource.data.workerId)).data.userId ||
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan']);
+    }
+    
+    // Addresses collection - users can read/write their own addresses
+    match /addresses/{addressId} {
+      allow read, write: if request.auth != null && 
+                            resource.data.userId == request.auth.uid;
+    }
+    
+    // Conversations collection - participants can read/write
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null && 
+                            (resource.data.customerId == request.auth.uid ||
+                             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan']);
+    }
+    
+    // Promotions collection - readable by all, writable by admins
+    match /promotions/{promotionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin_umum', 'admin_perusahaan'];
+    }
+    
+    // Real-time tracking data - readable by order participants
+    match /tracking/{trackingId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

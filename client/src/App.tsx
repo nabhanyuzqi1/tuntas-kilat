@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import AdminDashboard from "@/pages/admin/dashboard";
 import WorkerDashboard from "@/pages/worker/dashboard";
 import Testing from "@/pages/testing";
+import FirebaseTesting from "@/pages/firebase-testing";
 import Booking from "@/pages/booking";
 import Tracking from "@/pages/tracking";
 import NotFound from "@/pages/not-found";
@@ -48,8 +49,9 @@ function Router() {
             <Route path="/worker/dashboard" component={WorkerDashboard} />
           )}
           
-          {/* Testing route (available to all authenticated users) */}
+          {/* Testing routes (available to all authenticated users) */}
           <Route path="/testing" component={Testing} />
+          <Route path="/firebase-testing" component={FirebaseTesting} />
         </>
       )}
       <Route component={NotFound} />
