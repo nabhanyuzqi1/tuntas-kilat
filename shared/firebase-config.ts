@@ -1,9 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
-import { getDatabase } from "firebase/database";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -41,8 +39,6 @@ try {
 // Firebase services - with fallbacks for demo mode
 export const db = isFirebaseEnabled && app ? getFirestore(app) : null;
 export const auth = isFirebaseEnabled && app ? getAuth(app) : null;
-export const storage = isFirebaseEnabled && app ? getStorage(app) : null;
-export const realtimeDb = isFirebaseEnabled && app ? getDatabase(app) : null;
 
 // Analytics (only in browser and when Firebase is enabled)
 export const analytics = (isFirebaseEnabled && app && typeof window !== 'undefined') 

@@ -4,6 +4,18 @@ runConfig:
   build:
     - npm install
     - npm run build
+  startCommand: npm start
+  cpu: 1
+  memoryMiB: 1024
+  maxInstances: 10
+  minInstances: 0
+  concurrency: 100
+  timeoutSeconds: 300
+  env:
+    - variable: NODE_ENV
+      value: "production"
+    - variable: PORT
+      value: "8080"
   env:
     - variable: NODE_ENV
       value: "production"

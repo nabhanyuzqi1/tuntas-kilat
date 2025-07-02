@@ -30,10 +30,10 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigation = [
-    { name: 'Beranda', href: '/', current: location === '/' },
-    { name: 'Layanan', href: '/#services', current: false },
-    { name: 'Lacak Pesanan', href: '/tracking', current: location.startsWith('/tracking') },
-    { name: 'Tentang', href: '/#about', current: false },
+    { name: 'Beranda', href: '/', current: location === '/', isAnchor: false },
+    { name: 'Layanan', href: '/services', current: location === '/services', isAnchor: false },
+    { name: 'Lacak Pesanan', href: '/tracking', current: location.startsWith('/tracking'), isAnchor: false },
+    { name: 'Tentang', href: '/about', current: location === '/about', isAnchor: false },
   ];
 
   const userNavigation = [
@@ -153,13 +153,12 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <Button 
-                className="btn-primary"
-                onClick={() => window.location.href = "/api/login"}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Masuk
-              </Button>
+              <Link href="/auth">
+                <Button className="btn-primary">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Masuk
+                </Button>
+              </Link>
             )}
 
             {/* Mobile menu button */}
@@ -244,16 +243,15 @@ export default function Navbar() {
 
                   {!isAuthenticated && (
                     <div className="border-t pt-6 mt-auto">
-                      <Button 
-                        className="w-full btn-primary"
-                        onClick={() => {
-                          window.location.href = "/api/login";
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Masuk
-                      </Button>
+                      <Link href="/auth">
+                        <Button 
+                          className="w-full btn-primary"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Masuk
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </div>

@@ -15,8 +15,7 @@ import {
   GeoPoint,
   Timestamp,
 } from "firebase/firestore";
-import { ref, push, set, onValue, off } from "firebase/database";
-import { db, realtimeDb, isFirebaseAvailable } from "./firebase-config";
+import { db, isFirebaseAvailable } from "./firebase-config";
 
 // Types for Firebase documents
 export interface FirebaseUser {
@@ -132,67 +131,141 @@ export interface FirebaseConversation {
 export class FirebaseStorageService {
   // User operations
   async getUser(userId: string): Promise<FirebaseUser | null> {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    return userDoc.exists() ? ({ id: userDoc.id, ...userDoc.data() } as FirebaseUser) : null;
+    if (!db) return null;
+    try {
+      const userDoc = await getDoc(doc(db, "users", userId));
+      return userDoc.exists() ? ({ id: userDoc.id, ...userDoc.data() } as FirebaseUser) : null;
+    } catch (error) {
+      console.error('Firebase getUser error:', error);
+      return null;
+    }
   }
 
   async createUser(userData: Omit<FirebaseUser, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const docRef = await addDoc(collection(db, "users"), {
-      ...userData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return docRef.id;
+    if (!db) throw new Error('Firestore not available');
+    try {
+      const docRef = await addDoc(collection(db, "users"), {
+        ...userData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Firebase createUser error:', error);
+      throw error;
+    }
   }
 
   async updateUser(userId: string, userData: Partial<FirebaseUser>): Promise<void> {
-    await updateDoc(doc(db, "users", userId), {
-      ...userData,
-      updatedAt: serverTimestamp(),
-    });
+    if (!db) return;
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        ...userData,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('Firebase updateUser error:', error);
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<FirebaseUser | null> {
+    if (!db) {
+      console.error('Firestore not initialized');
+      return null;
+    }
+    try {
+      const usersQuery = query(collection(db, "users"), where("email", "==", email));
+      const snapshot = await getDocs(usersQuery);
+      return snapshot.empty ? null : ({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirebaseUser);
+    } catch (error) {
+      console.error('Firebase getUserByEmail error:', error);
+      return null;
+    }
   }
 
   // Service operations
   async getServices(): Promise<FirebaseService[]> {
-    const servicesQuery = query(
-      collection(db, "services"),
-      where("active", "==", true),
-      orderBy("name")
-    );
-    const snapshot = await getDocs(servicesQuery);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirebaseService));
+    if (!db) return [];
+    try {
+      const servicesQuery = query(
+        collection(db, "services"),
+        where("active", "==", true),
+        orderBy("name")
+      );
+      const snapshot = await getDocs(servicesQuery);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirebaseService));
+    } catch (error) {
+      console.error('Firebase getServices error:', error);
+      return [];
+    }
   }
 
   async getService(serviceId: string): Promise<FirebaseService | null> {
-    const serviceDoc = await getDoc(doc(db, "services", serviceId));
-    return serviceDoc.exists() ? ({ id: serviceDoc.id, ...serviceDoc.data() } as FirebaseService) : null;
+    if (!db) return null;
+    try {
+      const serviceDoc = await getDoc(doc(db, "services", serviceId));
+      return serviceDoc.exists() ? ({ id: serviceDoc.id, ...serviceDoc.data() } as FirebaseService) : null;
+    } catch (error) {
+      console.error('Firebase getService error:', error);
+      return null;
+    }
   }
 
   async createService(serviceData: Omit<FirebaseService, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const docRef = await addDoc(collection(db, "services"), {
-      ...serviceData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    return docRef.id;
+    if (!db) throw new Error('Firestore not available');
+    try {
+      const docRef = await addDoc(collection(db, "services"), {
+        ...serviceData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Firebase createService error:', error);
+      throw error;
+    }
   }
 
   // Worker operations
   async getWorkers(): Promise<FirebaseWorker[]> {
-    const workersQuery = query(collection(db, "workers"), orderBy("name"));
-    const snapshot = await getDocs(workersQuery);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirebaseWorker));
+    if (!db) return [];
+    try {
+      const workersQuery = query(collection(db, "workers"), orderBy("name"));
+      const snapshot = await getDocs(workersQuery);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirebaseWorker));
+    } catch (error) {
+      console.error('Firebase getWorkers error:', error);
+      return [];
+    }
   }
 
   async getWorker(workerId: string): Promise<FirebaseWorker | null> {
-    const workerDoc = await getDoc(doc(db, "workers", workerId));
-    return workerDoc.exists() ? ({ id: workerDoc.id, ...workerDoc.data() } as FirebaseWorker) : null;
+    if (!db) {
+      console.error('Firestore not initialized');
+      return null;
+    }
+    try {
+      const workerDoc = await getDoc(doc(db, "workers", workerId));
+      return workerDoc.exists() ? ({ id: workerDoc.id, ...workerDoc.data() } as FirebaseWorker) : null;
+    } catch (error) {
+      console.error('Firebase getWorker error:', error);
+      return null;
+    }
   }
 
   async getWorkerByUserId(userId: string): Promise<FirebaseWorker | null> {
-    const workersQuery = query(collection(db, "workers"), where("userId", "==", userId));
-    const snapshot = await getDocs(workersQuery);
-    return snapshot.empty ? null : ({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirebaseWorker);
+    if (!db) {
+      console.error('Firestore not initialized');
+      return null;
+    }
+    try {
+      const workersQuery = query(collection(db, "workers"), where("userId", "==", userId));
+      const snapshot = await getDocs(workersQuery);
+      return snapshot.empty ? null : ({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirebaseWorker);
+    } catch (error) {
+      console.error('Firebase getWorkerByUserId error:', error);
+      return null;
+    }
   }
 
   async getAvailableWorkers(specialization?: string): Promise<FirebaseWorker[]> {
@@ -213,13 +286,6 @@ export class FirebaseStorageService {
     await updateDoc(doc(db, "workers", workerId), {
       location: new GeoPoint(lat, lng),
       lastLocationUpdate: serverTimestamp(),
-    });
-
-    // Also update real-time location
-    await set(ref(realtimeDb, `workers/${workerId}/location`), {
-      lat,
-      lng,
-      timestamp: Date.now(),
     });
   }
 

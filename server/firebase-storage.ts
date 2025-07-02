@@ -178,6 +178,11 @@ function convertFirebaseOrderToOrder(fbOrder: FirebaseOrder, index: number): Ord
 }
 
 // Firebase Storage Implementation
+// Simple in-memory storage for development
+const memoryUsers: Map<string, User> = new Map();
+const memoryUsersByEmail: Map<string, User> = new Map();
+const memoryUsersByPhone: Map<string, User> = new Map();
+
 export class FirebaseStorageImpl implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
@@ -191,10 +196,14 @@ export class FirebaseStorageImpl implements IStorage {
   }
 
   async getUserByPhone(phone: string): Promise<User | undefined> {
-    // Firebase doesn't have direct phone lookup, will need to query users collection
     try {
-      // Note: This would require a custom implementation or Firestore query
-      return undefined; // Temporary implementation
+      // Menggunakan firebaseStorage untuk mencari user berdasarkan phone
+      const users = await firebaseStorage.getUsers();
+      const userWithPhone = users.find(user => 
+        user.phone === phone || user.phoneNumber === phone
+      );
+      
+      return userWithPhone ? convertFirebaseUserToUser(userWithPhone) : undefined;
     } catch (error) {
       console.error('Error getting user by phone:', error);
       return undefined;
@@ -202,9 +211,17 @@ export class FirebaseStorageImpl implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    // Similar to phone, would need custom implementation
     try {
-      return undefined; // Temporary implementation
+      // First, check session storage for registered users
+      const { sessionStorage } = await import('./session-storage');
+      const sessionUser = await sessionStorage.getByIdentifier(email);
+      
+      if (sessionUser) {
+        return sessionUser;
+      }
+
+      console.log('User not found in session storage, email:', email);
+      return undefined;
     } catch (error) {
       console.error('Error getting user by email:', error);
       return undefined;

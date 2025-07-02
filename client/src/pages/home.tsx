@@ -19,6 +19,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
+import { WhatsAppFloatingButton, WhatsAppQuickShareCard } from "@/components/whatsapp/quick-share-button";
 
 export default function Home() {
   const { user } = useAuth();
@@ -314,6 +315,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppFloatingButton />
     </div>
   );
 }

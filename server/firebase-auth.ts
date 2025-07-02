@@ -1,11 +1,13 @@
-import { firebaseStorage } from "@shared/firebase-services";
-import { firebaseRealtime } from "../shared/firebase-realtime";
-import bcrypt from "bcryptjs";
+// Firebase realtime removed - using in-memory OTP storage
+import { storage } from "./firebase-storage";
+import { sessionStorage } from "./session-storage";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 
-// OTP is now stored in Firebase Realtime Database via firebaseRealtime service
+// Simple in-memory OTP store for development fallback
+const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number; }>();
 
-// JWT Secret - with fallback for development
+// JWT Secret dari environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'default-dev-secret-for-testing-only-change-in-production';
 
 export class FirebaseAuthService {
@@ -31,18 +33,35 @@ export class FirebaseAuthService {
 
   async sendOTP(phoneNumber: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Format phone number ke format Indonesia
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
-      
-      // Generate 6 digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Store OTP in Firebase Realtime Database
-      await firebaseRealtime.storeOTP(formattedPhone, otp, 5);
+      console.log(`Generating OTP for ${formattedPhone}: ${otp}`);
+      
+      // Primary storage: in-memory store (reliable)
+      // Secondary storage: Firebase Realtime Database (bonus)
+      const expiresAt = Date.now() + (5 * 60 * 1000); // 5 menit
+      otpStore.set(formattedPhone, { otp, expiresAt, attempts: 0 });
+      console.log('OTP stored in in-memory store (primary)');
+      
+      // Try Firebase as secondary storage
+      let storedInFirebase = false;
+      try {
+        await firebaseRealtime.storeOTP(formattedPhone, otp, 5);
+        storedInFirebase = true;
+        console.log('OTP also stored in Firebase Realtime Database (secondary)');
+      } catch (error) {
+        console.log('Firebase Realtime Database not available (fallback only)');
+        storedInFirebase = false;
+      }
 
-      // Di sini akan menggunakan WhatsApp API untuk mengirim OTP
-      // Untuk sementara, return success dengan OTP untuk testing
-      console.log(`OTP untuk ${formattedPhone}: ${otp}`);
+      // TODO: Implementasi WhatsApp API untuk mengirim OTP
+      // Untuk testing, log OTP di console
+      console.log(`=== DEBUG OTP ===`);
+      console.log(`Phone: ${formattedPhone}`);
+      console.log(`OTP: ${otp}`);
+      console.log(`Stored in Firebase: ${storedInFirebase}`);
+      console.log(`=================`);
       
       return {
         success: true,
@@ -61,46 +80,109 @@ export class FirebaseAuthService {
     firstName?: string;
     lastName?: string;
   }): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
+    console.log('=== Starting OTP Verification ===');
+    console.log('Phone Number:', phoneNumber);
+    console.log('OTP:', otp);
+    
     try {
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
-      // Verify OTP using Firebase Realtime Database
-      const verificationResult = await firebaseRealtime.verifyOTP(formattedPhone, otp);
+      console.log('Formatted phone:', formattedPhone);
       
-      if (!verificationResult.valid) {
+      // Dual verification system: Firebase Realtime DB + In-memory fallback
+      let otpValid = false;
+      let errorMessage = '';
+      let verificationSource = '';
+      
+      // Step 1: Check in-memory store first (primary)
+      console.log('Checking in-memory store first...');
+      const storedOtp = otpStore.get(formattedPhone);
+      console.log('In-memory OTP data:', storedOtp);
+      
+      if (storedOtp) {
+        if (storedOtp.expiresAt < Date.now()) {
+          otpValid = false;
+          errorMessage = 'Kode OTP sudah kedaluwarsa. Silakan minta kode baru.';
+          console.log('OTP expired in memory store');
+          otpStore.delete(formattedPhone); // Clean up expired OTP
+        } else if (storedOtp.otp !== otp) {
+          // Increment attempts
+          storedOtp.attempts = (storedOtp.attempts || 0) + 1;
+          if (storedOtp.attempts >= 3) {
+            otpStore.delete(formattedPhone);
+            otpValid = false;
+            errorMessage = 'Terlalu banyak percobaan salah. Silakan minta kode OTP baru.';
+          } else {
+            otpStore.set(formattedPhone, storedOtp);
+            otpValid = false;
+            errorMessage = `Kode OTP salah. Sisa percobaan: ${3 - storedOtp.attempts}`;
+          }
+          console.log('OTP mismatch, attempts:', storedOtp.attempts);
+        } else {
+          otpValid = true;
+          verificationSource = 'Memory';
+          console.log('In-memory verification successful');
+          // Clean up used OTP
+          otpStore.delete(formattedPhone);
+        }
+      } else {
+        // Step 2: If not found in memory, try Firebase as backup
+        console.log('OTP not found in memory, trying Firebase Realtime Database as backup...');
+        try {
+          const verificationResult = await firebaseRealtime.verifyOTP(formattedPhone, otp);
+          console.log('Firebase verification result:', verificationResult);
+          
+          if (verificationResult && verificationResult.valid !== undefined) {
+            if (verificationResult.message === 'Database not available') {
+              otpValid = false;
+              errorMessage = 'Kode OTP tidak ditemukan. Silakan minta kode baru.';
+            } else {
+              otpValid = verificationResult.valid;
+              errorMessage = verificationResult.message;
+              verificationSource = 'Firebase';
+            }
+          } else {
+            otpValid = false;
+            errorMessage = 'Kode OTP tidak ditemukan. Silakan minta kode baru.';
+          }
+        } catch (firebaseError) {
+          console.log('Firebase verification also failed:', firebaseError);
+          otpValid = false;
+          errorMessage = 'Kode OTP tidak ditemukan. Silakan minta kode baru.';
+        }
+      }
+      
+      console.log(`OTP verification result: ${otpValid} (source: ${verificationSource})`);
+      
+      if (!otpValid) {
+        console.log('OTP verification failed:', errorMessage);
         return {
           success: false,
-          message: verificationResult.message
+          message: errorMessage || 'Kode OTP tidak valid.'
         };
       }
 
-      // Cari atau buat user di Firebase
+      // Simple user management for now - create/find user
       let user;
       try {
-        // Cari user berdasarkan phone number (implementasi custom diperlukan)
-        const existingUsers = await firebaseStorage.getServices(); // Placeholder
-        user = null; // Sementara null, perlu implementasi pencarian user by phone
-        
-        if (!user && userData) {
-          // Buat user baru
-          const newUserData = {
-            firstName: userData.firstName || 'User',
-            lastName: userData.lastName || '',
-            role: 'customer' as const,
-            // Note: Firebase user tidak langsung support phone number
-          };
-          
-          const userId = await firebaseStorage.createUser(newUserData);
-          user = await firebaseStorage.getUser(userId);
-        }
-      } catch (error) {
-        console.error('Error handling user in Firebase:', error);
-        // Fallback: buat user object sederhana
+        // Simple user object creation
         user = {
-          id: `user_${formattedPhone.replace(/\D/g, '')}`,
+          id: `user_${formattedPhone.replace(/\D/g, '')}_${Date.now()}`,
           firstName: userData?.firstName || 'User',
           lastName: userData?.lastName || '',
-          role: 'customer',
-          phoneNumber: formattedPhone
+          email: `${formattedPhone.replace(/\D/g, '')}@tuntas-kilat.com`,
+          phone: formattedPhone,
+          phoneNumber: formattedPhone,
+          role: 'customer' as const,
+          membershipLevel: 'bronze' as const,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      } catch (error) {
+        console.error('Error creating user:', error);
+        return {
+          success: false,
+          message: 'Gagal membuat akun pengguna.'
         };
       }
 
@@ -129,18 +211,77 @@ export class FirebaseAuthService {
   }
 
   async login(identifier: string, password: string): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
+    console.log('=== Email/Password Login ===');
+    console.log('Identifier:', identifier);
+    
+    // Validate input parameters
+    if (!identifier || !password) {
+      return { success: false, message: 'Email dan password harus diisi' };
+    }
+    
     try {
-      // Firebase authentication biasanya menggunakan email/password atau phone OTP
-      // Untuk sekarang, implementasi basic login
+      // Find user by email or phone
+      let user = null;
+      
+      if (identifier.includes('@')) {
+        user = await storage.getUserByEmail(identifier);
+        console.log('User found by email:', !!user);
+      } else {
+        const formattedPhone = this.formatPhoneNumber(identifier);
+        user = await storage.getUserByPhone(formattedPhone);
+        console.log('User found by phone:', !!user);
+      }
+      
+      if (!user) {
+        return {
+          success: false,
+          message: 'Akun tidak ditemukan. Silakan daftar terlebih dahulu.'
+        };
+      }
+      
+      if (!user.password) {
+        return {
+          success: false,
+          message: 'Akun belum memiliki password. Silakan gunakan OTP WhatsApp atau reset password.'
+        };
+      }
+      
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      
+      if (!isPasswordValid) {
+        return {
+          success: false,
+          message: 'Password salah. Silakan coba lagi.'
+        };
+      }
+      
+      // Update last login
+      await storage.upsertUser({
+        ...user,
+        lastLoginAt: new Date()
+      });
+      
+      const token = this.generateToken(user);
+      
       return {
-        success: false,
-        message: 'Login dengan password tidak didukung. Gunakan WhatsApp OTP.'
+        success: true,
+        message: 'Login berhasil!',
+        token,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        }
       };
     } catch (error) {
-      console.error('Error during login:', error);
+      console.error('Login error:', error);
       return {
         success: false,
-        message: 'Terjadi kesalahan saat login.'
+        message: 'Terjadi kesalahan sistem. Silakan coba lagi.'
       };
     }
   }
@@ -148,22 +289,83 @@ export class FirebaseAuthService {
   async register(userData: {
     firstName: string;
     lastName: string;
-    email?: string;
-    phone: string;
+    email: string;
+    phone?: string;
     password: string;
   }): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
+    console.log('=== Email Registration ===');
+    console.log('Email:', userData.email);
+    
     try {
-      // Untuk Firebase, biasanya tidak menggunakan registrasi dengan password
-      // Gunakan WhatsApp OTP untuk verifikasi
+      // Check if user already exists in session storage first (fast)
+      let existingUser = null;
+      try {
+        existingUser = await sessionStorage.getUserByEmail(userData.email);
+        console.log('Checked session storage for existing user:', !!existingUser);
+      } catch (error) {
+        console.log('Session storage check completed');
+      }
+      
+      if (existingUser) {
+        return {
+          success: false,
+          message: 'Email sudah terdaftar. Silakan gunakan email lain atau login.'
+        };
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      // Create new user
+      const newUser = {
+        id: `user_email_${Date.now()}_${Math.random().toString(36).substring(2)}`,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phone: userData.phone || null,
+        phoneNumber: userData.phone || null,
+        password: hashedPassword,
+        role: 'customer' as const,
+        membershipLevel: 'bronze' as const,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      // Store in Firebase and in-memory storage
+      console.log('Creating new user with email registration');
+      
+      // Priority 1: Store in session storage immediately (fast)
+      try {
+        await sessionStorage.set(newUser.id, newUser);
+        console.log('User stored in session storage (priority 1)');
+      } catch (sessionError) {
+        console.error('Session storage error:', sessionError);
+      }
+      
+      // Skip Firebase for now - use session storage only (fastest)
+      console.log('Firebase bypassed - using session storage for immediate response');
+      
+      const token = this.generateToken(newUser);
+      
       return {
-        success: false,
-        message: 'Registrasi manual tidak didukung. Gunakan WhatsApp OTP untuk verifikasi.'
+        success: true,
+        message: 'Registrasi berhasil! Selamat datang di Tuntas Kilat.',
+        token,
+        user: {
+          id: newUser.id,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          email: newUser.email,
+          phone: newUser.phone,
+          role: newUser.role
+        }
       };
     } catch (error) {
-      console.error('Error during registration:', error);
+      console.error('Registration error:', error);
       return {
         success: false,
-        message: 'Terjadi kesalahan saat registrasi.'
+        message: 'Terjadi kesalahan saat registrasi. Silakan coba lagi.'
       };
     }
   }
@@ -191,15 +393,8 @@ export class FirebaseAuthService {
         return null;
       }
 
-      // Verifikasi user masih ada di Firebase
-      try {
-        const user = await firebaseStorage.getUser(decoded.userId);
-        return user ? decoded : null;
-      } catch (error) {
-        console.error('Error verifying user in Firebase:', error);
-        // Return decoded token jika Firebase error (untuk fallback)
-        return decoded;
-      }
+      // Return decoded token for session verification
+      return decoded;
     } catch (error) {
       console.error('Error verifying session:', error);
       return null;
@@ -225,8 +420,12 @@ export class FirebaseAuthService {
 
   // Bersihkan OTP yang sudah expired
   cleanExpiredOTPs(): void {
-    // OTP cleanup is now handled automatically by Firebase Realtime Database expiration
-    firebaseRealtime.cleanupExpiredData();
+    const now = Date.now();
+    for (const [phoneNumber, otpData] of otpStore.entries()) {
+      if (otpData.expiresAt < now) {
+        otpStore.delete(phoneNumber);
+      }
+    }
   }
 }
 

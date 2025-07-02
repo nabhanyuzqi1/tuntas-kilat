@@ -28,6 +28,7 @@ import {
   ArrowLeft,
   Plus
 } from "lucide-react";
+import { WhatsAppFloatingButton, WhatsAppQuickShareCard } from "@/components/whatsapp/quick-share-button";
 
 export default function Booking() {
   const { user } = useAuth();
@@ -674,6 +675,9 @@ export default function Booking() {
           </div>
         )}
       </div>
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppFloatingButton />
     </div>
   );
 }
