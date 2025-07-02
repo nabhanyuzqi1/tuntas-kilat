@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Navbar from "@/components/layout/navbar";
 import ServiceCard from "@/components/services/service-card";
 import WhatsAppInterface from "@/components/chat/whatsapp-interface";
+import { Link } from "wouter";
 import { 
   Car, 
   Bike, 
@@ -119,21 +120,24 @@ export default function Landing() {
                 Pesan via WhatsApp, pantau real-time!
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  size="lg" 
-                  className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
-                  onClick={() => window.location.href = "/auth"}
-                >
-                  <MessageSquare className="w-5 h-5 mr-3" />
-                  Login & Pesan Sekarang
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
-                >
-                  Lihat Harga
-                </Button>
+                <Link href="/auth">
+                  <Button 
+                    size="lg" 
+                    className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
+                  >
+                    <MessageSquare className="w-5 h-5 mr-3" />
+                    Login & Pesan Sekarang
+                  </Button>
+                </Link>
+                <Link href="/services">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
+                  >
+                    Lihat Harga
+                  </Button>
+                </Link>
               </div>
             </div>
             
@@ -260,21 +264,24 @@ export default function Landing() {
             Bergabung dengan ribuan pelanggan yang sudah merasakan kemudahan dan kualitas layanan Tuntas Kilat
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
-              onClick={() => window.location.href = "/api/login"}
-            >
-              <MessageSquare className="w-5 h-5 mr-3" />
-              Pesan via WhatsApp
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
-            >
-              Lihat Harga
-            </Button>
+            <Link href="/auth">
+              <Button 
+                size="lg" 
+                className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
+              >
+                <MessageSquare className="w-5 h-5 mr-3" />
+                Pesan via WhatsApp
+              </Button>
+            </Link>
+            <Link href="/services">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-primary transition-all duration-300 font-semibold"
+              >
+                Lihat Harga
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -312,30 +319,30 @@ export default function Landing() {
             <div>
               <h4 className="font-bold mb-4">Layanan</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-primary transition-colors">Cuci Motor</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Cuci Mobil</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Potong Rumput</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Paket Berlangganan</a></li>
+                <li><Link href="/services" className="hover:text-primary transition-colors">Cuci Motor</Link></li>
+                <li><Link href="/services" className="hover:text-primary transition-colors">Cuci Mobil</Link></li>
+                <li><Link href="/services" className="hover:text-primary transition-colors">Potong Rumput</Link></li>
+                <li><Link href="/services" className="hover:text-primary transition-colors">Paket Berlangganan</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold mb-4">Perusahaan</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-primary transition-colors">Tentang Kami</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Karir</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Press Kit</a></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Tentang Kami</Link></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Karir</Link></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Press Kit</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold mb-4">Bantuan</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-primary transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Hubungi Kami</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Syarat & Ketentuan</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Kebijakan Privasi</a></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">FAQ</Link></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Hubungi Kami</Link></li>
+                <li><Link href="/terms-of-service" className="hover:text-primary transition-colors">Syarat & Ketentuan</Link></li>
+                <li><Link href="/privacy-policy" className="hover:text-primary transition-colors">Kebijakan Privasi</Link></li>
               </ul>
             </div>
           </div>

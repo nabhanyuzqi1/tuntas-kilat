@@ -9,6 +9,10 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Profile from "@/pages/profile";
 import AuthPage from "@/pages/auth";
+import Services from "@/pages/services";
+import About from "@/pages/about";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
 import AdminDashboard from "@/pages/admin/dashboard";
 import CRMDashboard from "@/pages/admin/crm";
 import WorkerDashboard from "@/pages/worker/dashboard";
@@ -39,6 +43,10 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/auth" component={AuthPage} />
+          <Route path="/services" component={Services} />
+          <Route path="/about" component={About} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/terms-of-service" component={TermsOfService} />
         </>
       ) : (
         <>

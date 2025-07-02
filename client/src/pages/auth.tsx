@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Smartphone, Mail, Lock, User, Check, Loader2 } from 'lucide-react';
+import { MessageSquare, Smartphone, Mail, Lock, User, Check, Loader2, ArrowLeft } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
@@ -260,6 +260,19 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-500 via-teal-600 to-blue-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
+        {/* Back Button */}
+        <div className="flex justify-start">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20 transition-colors"
+            onClick={() => setLocation('/')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali
+          </Button>
+        </div>
+        
         {/* Logo and Header */}
         <div className="text-center text-white space-y-2">
           <div className="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center mb-4">
