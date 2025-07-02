@@ -16,7 +16,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { ref, push, set, onValue, off } from "firebase/database";
-import { db, realtimeDb } from "./firebase-config";
+import { db, realtimeDb, isFirebaseAvailable } from "./firebase-config";
 
 // Types for Firebase documents
 export interface FirebaseUser {

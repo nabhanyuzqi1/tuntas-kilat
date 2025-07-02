@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/layout/navbar";
+import FirebaseStatus from "@/components/development/firebase-status";
 import { 
   Car, 
   Bike, 
@@ -105,6 +106,11 @@ export default function Home() {
     <div className="min-h-screen bg-stone">
       <Navbar />
       
+      {/* Firebase Status */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <FirebaseStatus />
+      </div>
+
       {/* Welcome Section */}
       <section className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
