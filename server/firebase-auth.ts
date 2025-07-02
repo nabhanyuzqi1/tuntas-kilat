@@ -1,19 +1,12 @@
 import { firebaseStorage } from "@shared/firebase-services";
+import { firebaseRealtime } from "../shared/firebase-realtime";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-interface OTPStore {
-  [phoneNumber: string]: {
-    otp: string;
-    expiresAt: Date;
-    attempts: number;
-  };
-}
+// OTP is now stored in Firebase Realtime Database via firebaseRealtime service
 
-const otpStore: OTPStore = {};
-
-// JWT Secret - in production this should be an environment variable
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-for-jwt-tuntas-kilat-2025";
+// JWT Secret - with fallback for development
+const JWT_SECRET = process.env.JWT_SECRET || 'default-dev-secret-for-testing-only-change-in-production';
 
 export class FirebaseAuthService {
   generateToken(user: any): string {
@@ -44,12 +37,8 @@ export class FirebaseAuthService {
       // Generate 6 digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Simpan OTP dengan expiry 5 menit
-      otpStore[formattedPhone] = {
-        otp,
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 menit
-        attempts: 0
-      };
+      // Store OTP in Firebase Realtime Database
+      await firebaseRealtime.storeOTP(formattedPhone, otp, 5);
 
       // Di sini akan menggunakan WhatsApp API untuk mengirim OTP
       // Untuk sementara, return success dengan OTP untuk testing
@@ -74,41 +63,15 @@ export class FirebaseAuthService {
   }): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
     try {
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
-      const storedOTP = otpStore[formattedPhone];
-
-      if (!storedOTP) {
+      // Verify OTP using Firebase Realtime Database
+      const verificationResult = await firebaseRealtime.verifyOTP(formattedPhone, otp);
+      
+      if (!verificationResult.valid) {
         return {
           success: false,
-          message: 'Kode OTP tidak ditemukan. Silakan minta kode baru.'
+          message: verificationResult.message
         };
       }
-
-      if (storedOTP.expiresAt < new Date()) {
-        delete otpStore[formattedPhone];
-        return {
-          success: false,
-          message: 'Kode OTP telah kedaluwarsa. Silakan minta kode baru.'
-        };
-      }
-
-      if (storedOTP.attempts >= 3) {
-        delete otpStore[formattedPhone];
-        return {
-          success: false,
-          message: 'Terlalu banyak percobaan. Silakan minta kode baru.'
-        };
-      }
-
-      if (storedOTP.otp !== otp) {
-        storedOTP.attempts++;
-        return {
-          success: false,
-          message: 'Kode OTP salah. Silakan coba lagi.'
-        };
-      }
-
-      // OTP valid, hapus dari store
-      delete otpStore[formattedPhone];
 
       // Cari atau buat user di Firebase
       let user;
@@ -262,12 +225,8 @@ export class FirebaseAuthService {
 
   // Bersihkan OTP yang sudah expired
   cleanExpiredOTPs(): void {
-    const now = new Date();
-    for (const phoneNumber in otpStore) {
-      if (otpStore[phoneNumber].expiresAt < now) {
-        delete otpStore[phoneNumber];
-      }
-    }
+    // OTP cleanup is now handled automatically by Firebase Realtime Database expiration
+    firebaseRealtime.cleanupExpiredData();
   }
 }
 

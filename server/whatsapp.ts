@@ -5,8 +5,8 @@ import { processCustomerMessage } from './gemini';
 
 // YCloud Configuration
 const YCLOUD_API_URL = 'https://api.ycloud.com/v2';
-const YCLOUD_API_KEY = '78f4b7c9effd22ae86646ecf7c87f174';
-const WHATSAPP_PHONE_NUMBER = '+6282256729812'; // Eupsilon Assistant
+const YCLOUD_API_KEY = process.env.YCLOUD_API_KEY;
+const WHATSAPP_PHONE_NUMBER = process.env.YCLOUD_PHONE_NUMBER || '+6282256729812';
 
 interface YCloudMessage {
   to: string;
