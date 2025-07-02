@@ -4,10 +4,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import PushNotifications from "@/components/notifications/push-notifications";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import AdminDashboard from "@/pages/admin/dashboard";
 import WorkerDashboard from "@/pages/worker/dashboard";
+import Testing from "@/pages/testing";
 import Booking from "@/pages/booking";
 import Tracking from "@/pages/tracking";
 import NotFound from "@/pages/not-found";
@@ -45,6 +47,9 @@ function Router() {
           {user?.role === 'worker' && (
             <Route path="/worker/dashboard" component={WorkerDashboard} />
           )}
+          
+          {/* Testing route (available to all authenticated users) */}
+          <Route path="/testing" component={Testing} />
         </>
       )}
       <Route component={NotFound} />
@@ -57,6 +62,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <PushNotifications />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>

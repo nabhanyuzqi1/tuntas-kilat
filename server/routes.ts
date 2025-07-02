@@ -6,6 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertOrderSchema, insertServiceSchema, insertConversationSchema } from "@shared/schema";
 import { z } from "zod";
 import { processCustomerMessage, generateOrderSummary, analyzeCustomerSentiment } from "./gemini";
+import { orderAssignmentService } from "./services/order-assignment";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
