@@ -85,7 +85,8 @@ export default function Testing() {
 
   const chatbotTestMutation = useMutation({
     mutationFn: async (message: string) => {
-      return await apiRequest('/api/chatbot/message', 'POST', { message });
+      const response = await apiRequest('POST', '/api/chatbot/message', { message });
+      return await response.json();
     },
     onSuccess: (data) => {
       setTestResults(prev => ({ ...prev, chatbot: { success: true, data } }));
@@ -102,10 +103,11 @@ export default function Testing() {
   const notificationTestMutation = useMutation({
     mutationFn: async () => {
       // Send a test notification via WebSocket
-      return await apiRequest('/api/test/notification', 'POST', {
+      const response = await apiRequest('POST', '/api/test/notification', {
         type: 'test_notification',
         message: 'This is a test notification'
       });
+      return await response.json();
     },
     onSuccess: () => {
       setTestResults(prev => ({ ...prev, notifications: { success: true } }));

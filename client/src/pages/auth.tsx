@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -18,9 +18,40 @@ interface AuthResponse {
   user?: any;
 }
 
+// Helper function for role-based redirection
+const getRedirectPath = (role: string): string => {
+  switch (role) {
+    case 'admin_umum':
+    case 'admin_perusahaan':
+      return '/admin';
+    case 'worker':
+      return '/worker';
+    case 'customer':
+    default:
+      return '/';
+  }
+};
+
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  // Check if already authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        const redirectPath = getRedirectPath(user.role);
+        setLocation(redirectPath);
+      } catch (error) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+      }
+    }
+  }, [setLocation]);
   
   // WhatsApp OTP State
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -72,14 +103,10 @@ export default function AuthPage() {
     setError('');
 
     try {
-      const response = await apiRequest('/api/auth/send-otp', {
-        method: 'POST',
-        body: {
-          phoneNumber: formatPhoneNumber(phoneNumber)
-        }
-      }) as AuthResponse;
+      const response = await apiRequest('POST', '/api/auth/whatsapp/send-otp', { phoneNumber: formatPhoneNumber(phoneNumber) });
+      const result = await response.json() as AuthResponse;
 
-      if (response.success) {
+      if (result.success) {
         setIsOtpSent(true);
         setOtpTimer(300); // 5 minutes countdown
         toast({
@@ -98,7 +125,7 @@ export default function AuthPage() {
           });
         }, 1000);
       } else {
-        setError(response.message);
+        setError(result.message || 'Gagal mengirim OTP');
       }
     } catch (error) {
       setError('Gagal mengirim OTP. Silakan coba lagi.');
@@ -118,21 +145,19 @@ export default function AuthPage() {
     setError('');
 
     try {
-      const response = await apiRequest('/api/auth/verify-otp', {
-        method: 'POST',
-        body: {
-          phoneNumber: formatPhoneNumber(phoneNumber),
-          otp: otp.trim(),
-          userData: {
-            firstName: registerData.firstName || 'Customer',
-            lastName: registerData.lastName || ''
-          }
+      const response = await apiRequest('POST', '/api/auth/whatsapp/verify-otp', {
+        phoneNumber: formatPhoneNumber(phoneNumber),
+        otp: otp.trim(),
+        userData: {
+          firstName: registerData.firstName || 'Customer',
+          lastName: registerData.lastName || ''
         }
-      }) as AuthResponse;
+      });
+      const result = await response.json() as AuthResponse;
 
-      if (response.success && response.token) {
-        localStorage.setItem('auth_token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+      if (result.success && result.token) {
+        localStorage.setItem('auth_token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
         
         toast({
           title: 'Login Berhasil',
@@ -140,15 +165,11 @@ export default function AuthPage() {
         });
 
         // Redirect based on user role
-        if (response.user?.role === 'worker') {
-          setLocation('/worker/dashboard');
-        } else if (response.user?.role === 'admin_umum' || response.user?.role === 'admin_perusahaan') {
-          setLocation('/admin/dashboard');
-        } else {
-          setLocation('/');
-        }
+        const userRole = result.user?.role || 'customer';
+        const redirectPath = getRedirectPath(userRole);
+        setLocation(redirectPath);
       } else {
-        setError(response.message);
+        setError(result.message || 'Verifikasi OTP gagal');
       }
     } catch (error) {
       setError('Gagal memverifikasi OTP. Silakan coba lagi.');
@@ -157,10 +178,10 @@ export default function AuthPage() {
     }
   };
 
-  // Email/Password Login
-  const handleLogin = async () => {
+  // Email Login
+  const handleEmailLogin = async () => {
     if (!loginData.identifier.trim() || !loginData.password.trim()) {
-      setError('Email/telepon dan password diperlukan');
+      setError('Email dan password diperlukan');
       return;
     }
 
@@ -168,14 +189,15 @@ export default function AuthPage() {
     setError('');
 
     try {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: loginData
-      }) as AuthResponse;
+      const response = await apiRequest('POST', '/api/auth/login', {
+        email: loginData.identifier.trim(),
+        password: loginData.password
+      });
+      const result = await response.json() as AuthResponse;
 
-      if (response.success && response.token) {
-        localStorage.setItem('auth_token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+      if (result.success && result.token) {
+        localStorage.setItem('auth_token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
         
         toast({
           title: 'Login Berhasil',
@@ -183,33 +205,28 @@ export default function AuthPage() {
         });
 
         // Redirect based on user role
-        if (response.user?.role === 'worker') {
-          setLocation('/worker/dashboard');
-        } else if (response.user?.role === 'admin_umum' || response.user?.role === 'admin_perusahaan') {
-          setLocation('/admin/dashboard');
-        } else {
-          setLocation('/');
-        }
+        const userRole = result.user?.role || 'customer';
+        const redirectPath = getRedirectPath(userRole);
+        setLocation(redirectPath);
       } else {
-        setError(response.message);
+        setError(result.message || 'Login gagal');
       }
     } catch (error) {
-      setError('Gagal login. Silakan coba lagi.');
+      setError('Gagal login. Silakan periksa email dan password.');
     } finally {
       setLoginLoading(false);
     }
   };
 
   // Registration
-  const handleRegister = async () => {
-    if (!registerData.firstName.trim() || !registerData.email.trim() || 
-        !registerData.phone.trim() || !registerData.password.trim()) {
-      setError('Semua field diperlukan');
+  const handleRegistration = async () => {
+    if (!registerData.firstName.trim() || !registerData.email.trim() || !registerData.password.trim()) {
+      setError('Nama, email, dan password diperlukan');
       return;
     }
 
     if (registerData.password !== registerData.confirmPassword) {
-      setError('Password tidak cocok');
+      setError('Password konfirmasi tidak cocok');
       return;
     }
 
@@ -222,155 +239,116 @@ export default function AuthPage() {
     setError('');
 
     try {
-      const { confirmPassword, ...dataToSend } = registerData;
-      dataToSend.phone = formatPhoneNumber(dataToSend.phone);
+      const response = await apiRequest('POST', '/api/auth/register', {
+        firstName: registerData.firstName.trim(),
+        lastName: registerData.lastName.trim(),
+        email: registerData.email.trim(),
+        phone: registerData.phone.trim(),
+        password: registerData.password
+      });
+      const result = await response.json() as AuthResponse;
 
-      const response = await apiRequest('/api/auth/register', {
-        method: 'POST',
-        body: dataToSend
-      }) as AuthResponse;
-
-      if (response.success && response.token) {
-        localStorage.setItem('auth_token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+      if (result.success && result.token) {
+        localStorage.setItem('auth_token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
         
         toast({
           title: 'Registrasi Berhasil',
-          description: 'Selamat datang di Tuntas Kilat!',
+          description: 'Akun Anda telah dibuat!',
         });
 
-        setLocation('/');
+        // Redirect based on user role  
+        const userRole = result.user?.role || 'customer';
+        const redirectPath = getRedirectPath(userRole);
+        setLocation(redirectPath);
       } else {
-        setError(response.message);
+        setError(result.message || 'Registrasi gagal');
       }
     } catch (error) {
-      setError('Gagal registrasi. Silakan coba lagi.');
+      setError('Gagal membuat akun. Silakan coba lagi.');
     } finally {
       setRegisterLoading(false);
     }
   };
 
-  // Format timer display
-  const formatTimer = (seconds: number): string => {
+  // Format timer
+  const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-500 via-teal-600 to-blue-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Back Button */}
-        <div className="flex justify-start">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20 transition-colors"
-            onClick={() => setLocation('/')}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali
-          </Button>
-        </div>
-        
-        {/* Logo and Header */}
-        <div className="text-center text-white space-y-2">
-          <div className="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center mb-4">
-            <MessageSquare className="w-8 h-8 text-teal-600" />
-          </div>
-          <h1 className="text-3xl font-bold">Tuntas Kilat</h1>
-          <p className="text-teal-100">Masuk ke akun Anda</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-4xl">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Tuntas Kilat</h1>
+          <p className="text-lg text-gray-600">Platform Layanan On-Demand Terpercaya</p>
         </div>
 
-        <Card className="border-0 shadow-2xl">
-          <Tabs defaultValue="whatsapp" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="whatsapp" className="text-xs">
-                <MessageSquare className="w-4 h-4 mr-1" />
-                WhatsApp
-              </TabsTrigger>
-              <TabsTrigger value="login" className="text-xs">
-                <Mail className="w-4 h-4 mr-1" />
-                Email
-              </TabsTrigger>
-              <TabsTrigger value="register" className="text-xs">
-                <User className="w-4 h-4 mr-1" />
-                Daftar
-              </TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="whatsapp" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              WhatsApp OTP
+            </TabsTrigger>
+            <TabsTrigger value="email" className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Email Login
+            </TabsTrigger>
+            <TabsTrigger value="register" className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Daftar Akun
+            </TabsTrigger>
+          </TabsList>
 
-            {/* WhatsApp OTP Login */}
-            <TabsContent value="whatsapp">
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="flex items-center justify-center gap-2">
-                  <Smartphone className="w-5 h-5 text-green-600" />
-                  Login via WhatsApp
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <TabsContent value="whatsapp">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="w-5 h-5" />
+                  Masuk dengan WhatsApp
                 </CardTitle>
                 <CardDescription>
-                  Verifikasi nomor telepon dengan OTP WhatsApp
+                  Verifikasi nomor WhatsApp Anda untuk masuk dengan mudah dan aman
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Nomor WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="08xxxxxxxxxx"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    disabled={isOtpSent}
+                  />
+                </div>
 
                 {!isOtpSent ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Nomor Telepon</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="08123456789"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="text-center text-lg"
-                      />
-                      <p className="text-xs text-gray-500 text-center">
-                        Format: 08xxx atau +62xxx
-                      </p>
-                    </div>
-
-                    <Button 
-                      onClick={sendOTP} 
-                      disabled={otpLoading || !phoneNumber.trim()}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      {otpLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Mengirim OTP...
-                        </>
-                      ) : (
-                        <>
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Kirim OTP via WhatsApp
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={sendOTP} 
+                    className="w-full"
+                    disabled={otpLoading}
+                  >
+                    {otpLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mengirim OTP...
+                      </>
+                    ) : (
+                      'Kirim Kode OTP'
+                    )}
+                  </Button>
                 ) : (
                   <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-3">
-                        <Check className="w-6 h-6 text-green-600" />
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Kode OTP telah dikirim ke
-                      </p>
-                      <p className="font-medium text-green-600">
-                        {formatPhoneNumber(phoneNumber)}
-                      </p>
-                      {otpTimer > 0 && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          Berlaku selama: {formatTimer(otpTimer)}
-                        </p>
-                      )}
-                    </div>
-
                     <div className="space-y-2">
                       <Label htmlFor="otp">Kode OTP (6 digit)</Label>
                       <Input
@@ -378,215 +356,184 @@ export default function AuthPage() {
                         type="text"
                         placeholder="123456"
                         value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="text-center text-xl tracking-widest"
+                        onChange={(e) => setOtp(e.target.value)}
                         maxLength={6}
                       />
                     </div>
 
+                    <div className="text-center text-sm text-gray-600">
+                      {otpTimer > 0 ? (
+                        <span>Kode berlaku: {formatTimer(otpTimer)}</span>
+                      ) : (
+                        <Button variant="link" onClick={() => {
+                          setIsOtpSent(false);
+                          setOtp('');
+                        }}>
+                          Kirim ulang kode
+                        </Button>
+                      )}
+                    </div>
+
                     <Button 
                       onClick={verifyOTP} 
-                      disabled={verifyLoading || otp.length !== 6}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      className="w-full"
+                      disabled={verifyLoading}
                     >
                       {verifyLoading ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Memverifikasi...
                         </>
                       ) : (
-                        <>
-                          <Lock className="w-4 h-4 mr-2" />
-                          Verifikasi & Masuk
-                        </>
+                        'Verifikasi & Masuk'
                       )}
                     </Button>
-
-                    <div className="text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setIsOtpSent(false);
-                          setOtp('');
-                          setOtpTimer(0);
-                          setError('');
-                        }}
-                        disabled={otpTimer > 240} // Allow resend after 1 minute
-                      >
-                        Ubah nomor telepon
-                      </Button>
-                    </div>
                   </div>
                 )}
               </CardContent>
-            </TabsContent>
+            </Card>
+          </TabsContent>
 
-            {/* Email/Password Login */}
-            <TabsContent value="login">
-              <CardHeader className="text-center pb-2">
-                <CardTitle>Login dengan Email</CardTitle>
+          <TabsContent value="email">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Masuk dengan Email
+                </CardTitle>
                 <CardDescription>
-                  Masuk dengan email dan password
+                  Masuk menggunakan email dan password yang telah terdaftar
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
                 <div className="space-y-2">
-                  <Label htmlFor="identifier">Email atau Telepon</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="identifier"
-                    type="text"
-                    placeholder="email@example.com"
+                    id="email"
+                    type="email"
+                    placeholder="nama@example.com"
                     value={loginData.identifier}
-                    onChange={(e) => setLoginData({...loginData, identifier: e.target.value})}
+                    onChange={(e) => setLoginData(prev => ({...prev, identifier: e.target.value}))}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Password"
                     value={loginData.password}
-                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                    onChange={(e) => setLoginData(prev => ({...prev, password: e.target.value}))}
                   />
                 </div>
-
                 <Button 
-                  onClick={handleLogin} 
-                  disabled={loginLoading}
+                  onClick={handleEmailLogin} 
                   className="w-full"
+                  disabled={loginLoading}
                 >
                   {loginLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Masuk...
                     </>
                   ) : (
-                    <>
-                      <Lock className="w-4 h-4 mr-2" />
-                      Masuk
-                    </>
+                    'Masuk'
                   )}
                 </Button>
               </CardContent>
-            </TabsContent>
+            </Card>
+          </TabsContent>
 
-            {/* Registration */}
-            <TabsContent value="register">
-              <CardHeader className="text-center pb-2">
-                <CardTitle>Daftar Akun Baru</CardTitle>
+          <TabsContent value="register">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Buat Akun Baru
+                </CardTitle>
                 <CardDescription>
-                  Buat akun untuk menggunakan layanan Tuntas Kilat
+                  Daftar untuk mendapatkan akses penuh ke semua layanan kami
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">Nama Depan</Label>
                     <Input
                       id="firstName"
-                      placeholder="John"
                       value={registerData.firstName}
-                      onChange={(e) => setRegisterData({...registerData, firstName: e.target.value})}
+                      onChange={(e) => setRegisterData(prev => ({...prev, firstName: e.target.value}))}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Nama Belakang</Label>
                     <Input
                       id="lastName"
-                      placeholder="Doe"
                       value={registerData.lastName}
-                      onChange={(e) => setRegisterData({...registerData, lastName: e.target.value})}
+                      onChange={(e) => setRegisterData(prev => ({...prev, lastName: e.target.value}))}
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="registerEmail">Email</Label>
                   <Input
-                    id="email"
+                    id="registerEmail"
                     type="email"
-                    placeholder="email@example.com"
                     value={registerData.email}
-                    onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
+                    onChange={(e) => setRegisterData(prev => ({...prev, email: e.target.value}))}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Nomor Telepon</Label>
+                  <Label htmlFor="registerPhone">Nomor HP (opsional)</Label>
                   <Input
-                    id="phone"
+                    id="registerPhone"
                     type="tel"
-                    placeholder="08123456789"
                     value={registerData.phone}
-                    onChange={(e) => setRegisterData({...registerData, phone: e.target.value})}
+                    onChange={(e) => setRegisterData(prev => ({...prev, phone: e.target.value}))}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">Password</Label>
+                  <Label htmlFor="registerPassword">Password</Label>
                   <Input
-                    id="newPassword"
+                    id="registerPassword"
                     type="password"
-                    placeholder="Minimal 6 karakter"
                     value={registerData.password}
-                    onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
+                    onChange={(e) => setRegisterData(prev => ({...prev, password: e.target.value}))}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Konfirmasi Password</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
-                    placeholder="Ketik ulang password"
                     value={registerData.confirmPassword}
-                    onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
+                    onChange={(e) => setRegisterData(prev => ({...prev, confirmPassword: e.target.value}))}
                   />
                 </div>
-
                 <Button 
-                  onClick={handleRegister} 
-                  disabled={registerLoading}
+                  onClick={handleRegistration} 
                   className="w-full"
+                  disabled={registerLoading}
                 >
                   {registerLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Mendaftar...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Membuat Akun...
                     </>
                   ) : (
-                    <>
-                      <User className="w-4 h-4 mr-2" />
-                      Daftar Akun
-                    </>
+                    'Buat Akun'
                   )}
                 </Button>
               </CardContent>
-            </TabsContent>
-          </Tabs>
-        </Card>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-        {/* Footer */}
-        <div className="text-center text-white text-sm">
-          <p>Dengan masuk, Anda menyetujui</p>
-          <p>
-            <a href="#" className="underline">Syarat & Ketentuan</a> dan{' '}
-            <a href="#" className="underline">Kebijakan Privasi</a>
+        <div className="text-center mt-8">
+          <p className="text-sm text-gray-500">
+            Dengan masuk, Anda menyetujui{' '}
+            <a href="#" className="text-blue-600 hover:underline">Syarat & Ketentuan</a>
+            {' '}dan{' '}
+            <a href="#" className="text-blue-600 hover:underline">Kebijakan Privasi</a>
           </p>
         </div>
       </div>

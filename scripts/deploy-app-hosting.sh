@@ -1,39 +1,46 @@
 #!/bin/bash
 
-echo "🚀 Deploying App Hosting with Frontend Integration"
-echo "================================================="
+echo "🚀 Firebase App Hosting Deployment Script"
 
-# Deploy to App Hosting
-echo "📦 Deploying backend to App Hosting..."
-firebase deploy --only apphosting:backend:tuntas-kilat-app --timeout 60s
+# Step 1: Build the application
+echo "🔨 Building application..."
+npm run build
 
-# Test deployment
-echo "🧪 Testing deployment..."
+# Step 2: Test production server locally
+echo "🖥️ Testing production server..."
+NODE_ENV=production PORT=8080 node dist/index.js &
+SERVER_PID=$!
+
+# Wait for server to start
 sleep 5
 
-echo -n "Testing health endpoint... "
-if curl -s https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/health | grep -q "healthy"; then
-    echo "✅ OK"
+# Test health endpoint
+echo "🏥 Testing health endpoint..."
+if curl -f http://localhost:8080/health; then
+    echo "✅ Health check passed"
 else
-    echo "❌ FAILED"
+    echo "❌ Health check failed"
+    kill $SERVER_PID
+    exit 1
 fi
 
-echo -n "Testing frontend... "
-if curl -s https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/ | grep -q "Tuntas Kilat"; then
-    echo "✅ OK"
+# Test API endpoint
+echo "🔌 Testing API endpoint..."
+if curl -f http://localhost:8080/api/services; then
+    echo "✅ API endpoint working"
 else
-    echo "❌ FAILED"
+    echo "❌ API endpoint failed"
+    kill $SERVER_PID
+    exit 1
 fi
 
-echo -n "Testing API... "
-if curl -s https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/api/services | grep -q "id"; then
-    echo "✅ OK"
-else
-    echo "❌ FAILED"
-fi
+# Kill test server
+kill $SERVER_PID
 
+echo "✅ All tests passed!"
+echo "🚀 Ready for Firebase App Hosting deployment"
 echo ""
-echo "🎯 Deployment Complete!"
-echo "Frontend: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app"
-echo "API: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/api"
-echo "Health: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/health"
+echo "Next steps:"
+echo "1. Ensure all environment variables are set in Firebase console"
+echo "2. Run: firebase deploy --only hosting"
+echo "3. Your app will be available at: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app"

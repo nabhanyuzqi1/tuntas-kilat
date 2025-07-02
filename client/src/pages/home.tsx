@@ -1,9 +1,7 @@
-import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import Navbar from "@/components/layout/navbar";
 import FirebaseStatus from "@/components/development/firebase-status";
 import { 
   Car, 
@@ -22,7 +20,6 @@ import { Link } from "wouter";
 import { WhatsAppFloatingButton, WhatsAppQuickShareCard } from "@/components/whatsapp/quick-share-button";
 
 export default function Home() {
-  const { user } = useAuth();
 
   const { data: services } = useQuery({
     queryKey: ["/api/services"],

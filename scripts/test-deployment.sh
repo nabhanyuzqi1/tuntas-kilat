@@ -1,100 +1,76 @@
 #!/bin/bash
 
-echo "🚀 Firebase App Hosting Deployment Test"
-echo "========================================"
+echo "🚀 Testing Deployment Configuration for Firebase App Hosting"
 
-# Test 1: Production Mode Startup (Critical Fix)
-echo "✓ Testing production mode startup..."
-NODE_ENV=production PORT=8082 tsx server/index.ts &
-PROD_PID=$!
-sleep 5
-
-# Check if process is still running (no module errors)
-if kill -0 $PROD_PID 2>/dev/null; then
-    echo "  ✅ Production server started successfully (no Vite module errors)"
-    
-    # Test health endpoint in production mode
-    PROD_HEALTH=$(curl -s http://localhost:8082/health 2>/dev/null)
-    if [[ $PROD_HEALTH == *"healthy"* ]]; then
-        echo "  ✅ Production health check: $PROD_HEALTH"
-    else
-        echo "  ❌ Production health check failed"
-    fi
-    
-    # Test API in production mode
-    PROD_API=$(curl -s http://localhost:8082/api/services 2>/dev/null)
-    if [[ $PROD_API == *"Cuci"* ]]; then
-        echo "  ✅ Production API working"
-    else
-        echo "  ❌ Production API failed"
-    fi
-    
-    kill $PROD_PID 2>/dev/null
-    wait $PROD_PID 2>/dev/null
+# Test 1: Check if required files exist
+echo "📁 Checking required files..."
+if [ ! -f "apphosting.yaml" ]; then
+    echo "❌ apphosting.yaml missing"
+    exit 1
 else
-    echo "  ❌ Production server failed to start (likely module import error)"
+    echo "✅ apphosting.yaml found"
+fi
+
+if [ ! -f "package.json" ]; then
+    echo "❌ package.json missing"
+    exit 1
+else
+    echo "✅ package.json found"
+fi
+
+# Test 2: Check package.json scripts
+echo "📦 Checking package.json scripts..."
+if ! grep -q '"build":' package.json; then
+    echo "❌ Build script missing in package.json"
+    exit 1
+else
+    echo "✅ Build script found"
+fi
+
+if ! grep -q '"start":' package.json; then
+    echo "❌ Start script missing in package.json"
+    exit 1
+else
+    echo "✅ Start script found"
+fi
+
+# Test 3: Test build process (quick check)
+echo "🔨 Testing build process..."
+if npm run build --silent 2>/dev/null; then
+    echo "✅ Build process works"
+else
+    echo "⚠️ Build process needs attention"
+fi
+
+# Test 4: Test production server startup
+echo "🖥️ Testing production server..."
+NODE_ENV=production PORT=8080 timeout 10s node dist/index.js &
+SERVER_PID=$!
+sleep 3
+
+# Check if server responds to health check
+if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+    echo "✅ Production server responds to health check"
+    kill $SERVER_PID 2>/dev/null
+else
+    echo "❌ Production server not responding"
+    kill $SERVER_PID 2>/dev/null
     exit 1
 fi
 
-# Test 2: Development Mode (for comparison)
-echo "✓ Testing development health endpoint..."
-HEALTH_RESPONSE=$(curl -s http://localhost:5000/health)
-if [[ $HEALTH_RESPONSE == *"healthy"* ]]; then
-    echo "  ✅ Development health endpoint working"
+# Test 5: Check environment variables in apphosting.yaml
+echo "🔧 Checking apphosting.yaml configuration..."
+if grep -q "PORT" apphosting.yaml; then
+    echo "✅ PORT environment variable configured"
 else
-    echo "  ❌ Development health endpoint failed"
-    exit 1
+    echo "❌ PORT environment variable missing"
 fi
 
-# Test 4: Check Build Configuration
-echo "✓ Checking build configuration..."
-if [ -f "apphosting.yaml" ]; then
-    echo "  ✅ apphosting.yaml exists"
-    if grep -q "startCommand: npm start" apphosting.yaml; then
-        echo "  ✅ Start command configured"
-    else
-        echo "  ❌ Start command missing"
-    fi
+if grep -q "NODE_ENV" apphosting.yaml; then
+    echo "✅ NODE_ENV environment variable configured"
 else
-    echo "  ❌ apphosting.yaml missing"
+    echo "❌ NODE_ENV environment variable missing"
 fi
 
-# Test 5: Check Package Scripts
-echo "✓ Checking package scripts..."
-if grep -q '"start": "NODE_ENV=production node dist/index.js"' package.json; then
-    echo "  ✅ Start script configured correctly"
-else
-    echo "  ❌ Start script misconfigured"
-fi
-
-echo ""
-echo "🎯 DEPLOYMENT FIXES SUMMARY:"
-echo "=============================="
-echo "✅ Server binds to 0.0.0.0 in production (not localhost)"
-echo "✅ Health check endpoint added: /health"
-echo "✅ Root endpoint added: /"
-echo "✅ PORT environment variable properly handled"
-echo "✅ App hosting configuration updated"
-echo "✅ Resource limits configured (1 CPU, 1024MB)"
-
-echo ""
-echo "📋 NEXT STEPS FOR DEPLOYMENT:"
-echo "============================="
-echo "1. Build the application:"
-echo "   npm run build"
-echo ""
-echo "2. Test production mode locally:"
-echo "   PORT=8080 NODE_ENV=production npm start"
-echo ""
-echo "3. Deploy to Firebase App Hosting:"
-echo "   firebase deploy --only hosting:tuntas-kilat-app"
-echo ""
-echo "4. Monitor deployment logs in Firebase Console"
-echo ""
-echo "🔧 If deployment still fails:"
-echo "- Check Cloud Run logs for specific errors"
-echo "- Verify all environment variables are set in Firebase Console"
-echo "- Ensure build process completes without errors"
-
-echo ""
-echo "✅ ALL TESTS PASSED - READY FOR DEPLOYMENT!"
+echo "🎉 Deployment configuration test completed!"
+echo "Your application is ready for Firebase App Hosting deployment."

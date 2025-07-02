@@ -1,72 +1,92 @@
 # Firebase App Hosting Deployment Fix
 
-## Issue Analysis
-Firebase App Hosting deployment failed with:
-- Container failed to start on port 8080
-- Startup TCP probe failed
-- Container timeout error
+## Problem Analysis
 
-## Root Cause
-1. Server binding to localhost instead of 0.0.0.0 in production ✅ FIXED
-2. Missing health check endpoint ✅ FIXED
-3. Vite module import error in production bundle ✅ FIXED
-4. Build process importing development-only dependencies ✅ FIXED
+The application works perfectly in development mode but fails with 503/500 errors when deployed to Firebase App Hosting at `https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app`.
 
-## Fixes Applied
+### Root Causes Identified:
 
-### 1. Server Configuration (server/index.ts) ✅ FIXED
-- Added proper host binding: `0.0.0.0` for production
-- Added health check endpoint: `/health`
-- Added root endpoint: `/`
-- Proper PORT environment variable handling
+1. **Server Binding Issue**: Server needs to bind to `0.0.0.0:8080` for Firebase App Hosting container compatibility
+2. **Health Check Missing**: Firebase App Hosting requires health check endpoints for container monitoring
+3. **Build Process**: ESBuild compilation might have module import issues in production
+4. **Environment Variables**: Missing or incorrect environment variable configuration
 
-### 2. Vite Module Import Fix ✅ FIXED
-- Critical fix for ERR_MODULE_NOT_FOUND error in production
-- Used dynamic import with Function constructor to prevent bundler resolution
-- Vite only loaded in development mode, completely avoided in production
-```javascript
-// Prevents esbuild from resolving Vite at build time
-const importVite = new Function('path', 'return import(path)');
-const viteModule = await importVite(viteModulePath);
+## Solutions Implemented
+
+### 1. Server Configuration Fix
+- ✅ Added health check endpoint at `/health`
+- ✅ Added root API endpoint at `/` for connectivity verification
+- ✅ Server binds to `0.0.0.0` with proper PORT environment variable handling
+
+### 2. AppHosting.yaml Configuration
+- ✅ Fixed duplicate environment variable declarations
+- ✅ Proper PORT=8080 configuration for Firebase App Hosting
+- ✅ NODE_ENV=production for production mode
+- ✅ All required Firebase environment variables configured
+
+### 3. Production Build Process
+- ✅ Vite build for frontend assets
+- ✅ ESBuild compilation for backend server
+- ✅ Proper module format (ESM) with external packages
+
+## Testing Commands
+
+### Local Development Test:
+```bash
+# Test current development server
+curl http://localhost:5000/api/services
 ```
 
-### 3. App Hosting Configuration (apphosting.yaml) ✅ FIXED
-- Added `startCommand: npm start`
-- Added resource limits: 1 CPU, 1024MB memory
-- Added concurrency settings
+### Production Build Test:
+```bash
+# Build application
+npm run build
 
-### 4. Health Check Endpoints ✅ FIXED
+# Test production server
+NODE_ENV=production PORT=8080 node dist/index.js
+
+# Test health endpoint (in another terminal)
+curl http://localhost:8080/health
+curl http://localhost:8080/api/services
 ```
-GET /health - Returns server health status
-GET / - Returns basic API info
+
+### Deployment Validation:
+```bash
+# Run deployment test script
+chmod +x scripts/deploy-app-hosting.sh
+./scripts/deploy-app-hosting.sh
 ```
 
-## Deployment Instructions
+## Expected Results After Fix
 
-1. **Verify Build Process**
-   ```bash
-   npm run build
-   ```
+When deployed to Firebase App Hosting, the following endpoints should work:
 
-2. **Test Production Mode Locally**
-   ```bash
-   PORT=8080 NODE_ENV=production npm start
-   ```
+1. **Health Check**: `GET /health` → `{ "status": "healthy", "timestamp": "...", "service": "tuntas-kilat-api" }`
+2. **Root API**: `GET /` → `{ "message": "Tuntas Kilat API Server", "version": "1.0.0", "status": "running" }`
+3. **Services API**: `GET /api/services` → Array of services data
+4. **Authentication**: `POST /api/auth/whatsapp/send-otp` → OTP functionality
 
-3. **Deploy to Firebase**
-   ```bash
-   firebase deploy --only hosting:tuntas-kilat-app
-   ```
+## Firebase App Hosting Requirements Met
 
-## Expected Results
-- Container starts successfully on port 8080
-- Health check responds at `/health`
-- API endpoints accessible
-- Static files served correctly
+- ✅ Container binds to port 8080
+- ✅ Server responds to health checks
+- ✅ Proper environment variable handling
+- ✅ ESM module format compatibility
+- ✅ Express.js server with proper error handling
+- ✅ Static file serving for frontend assets
 
-## Troubleshooting
+## Next Steps for Deployment
+
+1. Ensure all environment variables are configured in Firebase Console
+2. Deploy using Firebase CLI: `firebase deploy --only hosting`
+3. Monitor container logs for any runtime issues
+4. Test all API endpoints after deployment
+
+## Monitoring and Debugging
+
 If deployment still fails:
-1. Check Cloud Run logs in Firebase Console
-2. Verify all environment variables are set
-3. Test build process completes successfully
-4. Ensure no missing dependencies
+
+1. Check Firebase App Hosting logs in Firebase Console
+2. Verify environment variables are properly set
+3. Test local production build first
+4. Ensure all dependencies are properly installed during build process

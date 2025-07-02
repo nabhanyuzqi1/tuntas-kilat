@@ -40,13 +40,14 @@ export default function WhatsAppInterface() {
   // AI chatbot mutation
   const chatbotMutation = useMutation({
     mutationFn: async (message: string) => {
-      return await apiRequest('/api/chatbot/message', 'POST', {
+      const response = await apiRequest('POST', '/api/chatbot/message', {
         message,
         context: {
           messagesCount: messages.length,
           lastMessageTime: messages[messages.length - 1]?.timestamp
         }
       });
+      return await response.json();
     },
     onSuccess: (response: any) => {
       const aiMessage: Message = {

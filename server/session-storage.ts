@@ -1,4 +1,4 @@
-import { storage } from './firebase-storage';
+import { storage } from './storage-simple';
 
 // In-memory session storage with Firebase backup
 class SessionStorage {

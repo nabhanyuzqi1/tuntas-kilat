@@ -1,150 +1,188 @@
-# Tuntas Kilat - Firebase Deployment Guide
+# Firebase App Hosting Deployment Guide
 
 ## Overview
-Tuntas Kilat is optimized for Firebase ecosystem deployment using Firebase App Hosting with complete integration of Firebase services.
 
-## Local Development Setup
+This guide covers deployment methods for Tuntas Kilat application to Firebase App Hosting, including the alternative deployment method using Firebase CLI to resolve container startup issues.
 
-### 1. Environment Configuration
-Create a `.env` file in the project root:
+## Problem Summary
 
-```bash
-# Firebase Configuration
-VITE_FIREBASE_API_KEY=your_firebase_api_key_here
-VITE_FIREBASE_PROJECT_ID=your_firebase_project_id_here
-VITE_FIREBASE_APP_ID=your_firebase_app_id_here
-VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
-VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id_here
-VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id_here
-VITE_FIREBASE_DATABASE_URL=https://your_project_id-default-rtdb.asia-southeast1.firebasedatabase.app
+**Issue**: ERR_MODULE_NOT_FOUND for 'vite' package causing container exit status 1  
+**Solution**: Use Firebase CLI source deployment method instead of automatic GitHub deployment
 
-# Authentication
-JWT_SECRET=your_jwt_secret_key_here_minimum_32_characters
+## Deployment Methods
 
-# WhatsApp API (YCloud)
-YCLOUD_API_KEY=your_ycloud_api_key_here
-YCLOUD_PHONE_NUMBER=your_whatsapp_business_phone_number
+### Method 1: Firebase CLI Source Deployment (Recommended)
 
-# Gemini AI
-GEMINI_API_KEY=your_gemini_api_key_here
+Based on [Firebase App Hosting Alternative Deployment](https://firebase.google.com/docs/app-hosting/alt-deploy#deploy-source), this method uploads source code directly and handles build in Cloud Build.
+
+#### Prerequisites
+1. Firebase CLI installed: `npm install -g firebase-tools`
+2. Firebase project configured: Check `.firebaserc` exists
+3. Production server tested locally
+
+#### Configuration Files
+
+**firebase.json**:
+```json
+{
+  "apphosting": [
+    {
+      "backendId": "tuntas-kilat-app",
+      "rootDir": "./",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "dist",
+        ".cache",
+        "pglite-debug.log",
+        "attached_assets",
+        "docs",
+        "tests"
+      ]
+    }
+  ]
+}
 ```
 
-### 2. Local Development Commands
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+**apphosting.yaml**:
+```yaml
+runConfig:
+  runtime: nodejs20
+  build:
+    - npm install
+  startCommand: node production-server.js
+  cpu: 1
+  memoryMiB: 1024
+  maxInstances: 10
+  minInstances: 0
+  concurrency: 100
+  timeoutSeconds: 300
+  env:
+    - variable: NODE_ENV
+      value: "production"
+    - variable: PORT
+      value: "8080"
 ```
 
-## Firebase Services Architecture
+#### Deployment Steps
 
-### Core Services Used:
-1. **Firestore Database**: Primary data storage for users, orders, services, workers
-2. **Realtime Database**: Real-time features (chat, location tracking, OTP storage)
-3. **Cloud Functions**: Backend automation and API endpoints
-4. **Cloud Storage**: File uploads and media storage
-5. **App Hosting**: Full-stack application deployment
-6. **Authentication**: User authentication and authorization
+1. **Test Production Server Locally**:
+   ```bash
+   NODE_ENV=production PORT=8080 node production-server.js
+   ```
 
-### Data Flow:
-- **Firestore**: Persistent data (users, orders, services)
-- **Realtime DB**: Live data (chat messages, location updates, OTP)
-- **Storage**: Media files (profile pictures, service images)
-- **Functions**: Business logic (order assignment, notifications)
+2. **Verify Endpoints**:
+   ```bash
+   curl http://localhost:8080/health
+   curl http://localhost:8080/api/services
+   ```
 
-## Firebase App Hosting Deployment
+3. **Deploy Using Firebase CLI**:
+   ```bash
+   firebase deploy --only apphosting
+   ```
 
-### 1. Prerequisites
-- Firebase CLI installed: `npm install -g firebase-tools`
-- Firebase project created
-- App Hosting enabled in Firebase Console
+4. **Run Automated Deployment Script**:
+   ```bash
+   chmod +x scripts/deploy-firebase.sh
+   ./scripts/deploy-firebase.sh
+   ```
 
-### 2. Configure Environment Variables
-In Firebase Console > App Hosting > Environment Variables, add:
+### Method 2: Terraform Deployment (Advanced)
+
+For greater control over build process and environment configuration.
+
+### Method 3: Firebase Studio Deployment
+
+Direct deployment from Firebase Studio interface.
+
+## Production Server Architecture
+
+### Key Features
+- **No Vite Dependencies**: Eliminates ERR_MODULE_NOT_FOUND errors
+- **Container Ready**: Binds to 0.0.0.0:8080 for Firebase App Hosting
+- **Health Check**: `/health` endpoint for container monitoring
+- **API Endpoints**: Complete REST API with authentication
+- **Static Files**: Optional static file serving with graceful fallback
+
+### File Structure
+```
+production-server.js          # Standalone production server
+firebase.json                 # Firebase CLI deployment config
+apphosting.yaml              # App Hosting runtime configuration
+scripts/deploy-firebase.sh   # Automated deployment script
+```
+
+## Environment Variables
+
+Ensure these are configured in Firebase Console:
+
+### Required
+- `NODE_ENV=production`
+- `PORT=8080`
+
+### Optional (for full functionality)
 - `JWT_SECRET`
 - `YCLOUD_API_KEY`
 - `YCLOUD_PHONE_NUMBER`
 - `GEMINI_API_KEY`
-- All `VITE_FIREBASE_*` variables
+- Firebase configuration variables
 
-### 3. Deploy to App Hosting
+## Testing Deployment
+
+### Local Testing
 ```bash
-# Login to Firebase
-firebase login
+# Test production server
+NODE_ENV=production PORT=8080 node production-server.js
 
-# Initialize App Hosting (if not done)
-firebase init apphosting
-
-# Deploy
-firebase deploy --only apphosting
+# Test endpoints
+curl http://localhost:8080/health
+curl http://localhost:8080/api/services
+curl http://localhost:8080/
 ```
 
-## Production Considerations
-
-### Security:
-- All secrets managed via Firebase environment variables
-- No hardcoded API keys in source code
-- Firebase security rules implemented
-- JWT token-based authentication
-
-### Performance:
-- CDN delivery via Firebase App Hosting
-- Optimized build with Vite
-- Firebase connection pooling
-- Real-time subscriptions for live features
-
-### Monitoring:
-- Firebase Analytics integration
-- Error tracking via Firebase Crashlytics
-- Performance monitoring
-- Cloud Function logs
-
-## VS Code Local Debugging
-
-### Setup:
-1. Install Firebase emulators: `firebase init emulators`
-2. Start emulators: `firebase emulators:start`
-3. Use local `.env` file for development
-4. Connect to Firebase emulators in development mode
-
-### Debug Configuration:
-- Firestore emulator: `localhost:8080`
-- Realtime Database emulator: `localhost:9000`
-- Functions emulator: `localhost:5001`
-- App runs on: `localhost:5000`
-
-## Deployment Checklist
-
-### Before Deployment:
-- [ ] Environment variables configured in Firebase Console
-- [ ] Firebase services enabled (Firestore, Realtime DB, Storage, Functions)
-- [ ] Security rules deployed
-- [ ] All secrets removed from source code
-- [ ] Build successful locally
-
-### After Deployment:
-- [ ] Test authentication flow
-- [ ] Verify WhatsApp API integration
-- [ ] Check real-time features
-- [ ] Validate order flow
-- [ ] Monitor Firebase logs
+### Post-Deployment Testing
+```bash
+# Test deployed application
+curl https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/health
+curl https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/api/services
+```
 
 ## Troubleshooting
 
-### Common Issues:
-1. **Environment Variables**: Ensure all secrets are configured in Firebase Console
-2. **Firebase Rules**: Deploy security rules after first deployment
-3. **CORS Issues**: Configure domains in Firebase Authentication settings
-4. **API Limits**: Monitor Firebase usage quotas
+### Common Issues
 
-### Support:
-- Firebase Console logs for debugging
-- Cloud Function logs for backend issues
-- Browser console for frontend errors
-- Firebase support documentation
+1. **Container Exit Status 1**
+   - **Cause**: Module import errors (ERR_MODULE_NOT_FOUND)
+   - **Solution**: Use production-server.js without Vite dependencies
+
+2. **Build Timeout**
+   - **Cause**: Complex build process with Vite
+   - **Solution**: Simplified build process in apphosting.yaml
+
+3. **503/500 Errors**
+   - **Cause**: Server not binding to correct port
+   - **Solution**: Verify PORT=8080 and host=0.0.0.0
+
+### Monitoring
+- Check Firebase Console → App Hosting → Logs
+- Monitor container startup and health check responses
+- Verify environment variables are properly set
+
+## Success Criteria
+
+Deployment is successful when:
+- ✅ Container starts without exit errors
+- ✅ Health check responds with 200 status
+- ✅ API endpoints return proper data
+- ✅ No ERR_MODULE_NOT_FOUND errors in logs
+
+## Production URLs
+
+After successful deployment:
+- **Main Application**: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/
+- **Health Check**: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/health
+- **API Services**: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/api/services
+- **API Authentication**: https://tuntas-kilat-app--tuntas-kilat.asia-east1.hosted.app/api/auth/whatsapp/send-otp

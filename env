@@ -1,0 +1,19 @@
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=AIzaSyCG1xTF0V8dJ2o3Bh4sKqZGqNJn8h6H7M2
+VITE_FIREBASE_PROJECT_ID=tuntas-kilat
+VITE_FIREBASE_APP_ID=1:284752784157:web:5b8e6c8d9a4f3e2b1c7d9e
+VITE_FIREBASE_AUTH_DOMAIN=tuntas-kilat.firebaseapp.com
+VITE_FIREBASE_STORAGE_BUCKET=tuntas-kilat.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=284752784157
+VITE_FIREBASE_MEASUREMENT_ID=G-MZHVJ7QKPF
+VITE_FIREBASE_DATABASE_URL=https://tuntas-kilat-default-rtdb.asia-southeast1.firebasedatabase.app
+
+# Authentication
+JWT_SECRET=tuntas-kilat-super-secure-jwt-secret-key-2024-production-firebase
+
+# WhatsApp API (YCloud)
+YCLOUD_API_KEY=78f4b7c9effd22ae86646ecf7c87f174
+YCLOUD_PHONE_NUMBER=+6282256729812
+
+# Gemini AI
+GEMINI_API_KEY=AIzaSyDqQvM3tKj9P7bX8cH2fY1uZ4vW9xN6aE5
