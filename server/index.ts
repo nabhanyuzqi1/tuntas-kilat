@@ -57,12 +57,8 @@ app.use((req, res, next) => {
   }
 
   // Use port 80 for web access or 5000 for development
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 80;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+  server.listen(port, () => {
     log(`serving on port ${port}`);
   });
 })();
