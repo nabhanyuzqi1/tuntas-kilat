@@ -195,7 +195,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedOrder = await storage.updateOrderStatus(orderId, status, timeline);
       
-      // TODO: Notify via WebSocket
+      // Notify via WebSocket
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'order_update',
+            data: {
+              orderId: updatedOrder.id,
+              trackingId: updatedOrder.trackingId,
+              status: updatedOrder.status,
+              timeline: updatedOrder.timeline
+            }
+          }));
+        }
+      });
       
       res.json(updatedOrder);
     } catch (error) {

@@ -1,26 +1,35 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import Navbar from "@/components/layout/navbar";
-import TaskList from "@/components/worker/task-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useWebSocket } from "@/lib/websocket";
 import { 
   MapPin, 
-  Phone, 
   Clock, 
-  DollarSign,
-  Star,
+  Star, 
+  CheckCircle, 
+  XCircle,
   Navigation,
-  CheckCircle
+  Phone,
+  MessageSquare,
+  DollarSign,
+  Car,
+  Bike,
+  Leaf
 } from "lucide-react";
 
 export default function WorkerDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedStatus, setSelectedStatus] = useState('available');
 
   // Redirect if not authenticated or not worker
   useEffect(() => {
@@ -37,176 +46,328 @@ export default function WorkerDashboard() {
     }
   }, [isAuthenticated, isLoading, user, toast]);
 
-  const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["/api/orders"],
+  // Fetch worker profile and assigned orders
+  const { data: worker } = useQuery({
+    queryKey: ["/api/workers/profile"],
     retry: false,
   });
 
-  if (isLoading || !user) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-stone">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-primary rounded-lg mx-auto mb-4 animate-pulse"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const { data: assignedOrders } = useQuery({
+    queryKey: ["/api/workers/orders"],
+    retry: false,
+  });
 
-  const todayOrders = orders?.filter((order: any) => {
-    const orderDate = new Date(order.scheduledTime);
-    const today = new Date();
-    return orderDate.toDateString() === today.toDateString();
-  }) || [];
+  // WebSocket for real-time order updates
+  useWebSocket((message) => {
+    if (message.type === 'new_order_assignment' && message.data.workerId === worker?.id) {
+      queryClient.invalidateQueries({ queryKey: ["/api/workers/orders"] });
+      toast({
+        title: "Pesanan Baru!",
+        description: `Anda mendapat pesanan baru: ${message.data.trackingId}`,
+      });
+    }
+  });
 
-  const activeOrder = todayOrders.find((order: any) => 
-    ['assigned', 'ontheway', 'arrived', 'inprogress'].includes(order.status)
-  );
+  // Update worker status
+  const statusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      return await apiRequest('/api/workers/status', 'PATCH', { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workers/profile"] });
+      toast({
+        title: "Status Updated",
+        description: "Status Anda berhasil diperbarui",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const completedToday = todayOrders.filter((order: any) => order.status === 'completed').length;
-  const todayEarnings = todayOrders
-    .filter((order: any) => order.status === 'completed')
-    .reduce((sum: number, order: any) => sum + parseFloat(order.finalAmount || '0'), 0);
+  // Accept/Reject order
+  const orderActionMutation = useMutation({
+    mutationFn: async ({ orderId, action }: { orderId: number; action: 'accept' | 'reject' }) => {
+      return await apiRequest(`/api/orders/${orderId}/${action}`, 'PATCH');
+    },
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workers/orders"] });
+      toast({
+        title: action === 'accept' ? "Pesanan Diterima" : "Pesanan Ditolak",
+        description: action === 'accept' ? "Anda berhasil menerima pesanan" : "Pesanan telah ditolak",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized", 
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to process order action",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getServiceIcon = (category: string) => {
+    switch (category) {
+      case 'cuci_motor': return Bike;
+      case 'cuci_mobil': return Car;
+      case 'potong_rumput': return Leaf;
+      default: return Car;
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'assigned': return 'bg-blue-500';
-      case 'ontheway': return 'bg-orange-500';
-      case 'arrived': return 'bg-purple-500';
-      case 'inprogress': return 'bg-primary';
-      case 'completed': return 'bg-green-500';
+      case 'available': return 'bg-green-500';
+      case 'busy': return 'bg-red-500';
+      case 'offline': return 'bg-gray-500';
       default: return 'bg-gray-500';
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getOrderStatusColor = (status: string) => {
     switch (status) {
-      case 'assigned': return 'Ditugaskan';
-      case 'ontheway': return 'Dalam Perjalanan';
-      case 'arrived': return 'Tiba di Lokasi';
-      case 'inprogress': return 'Sedang Dikerjakan';
-      case 'completed': return 'Selesai';
-      default: return status;
+      case 'assigned': return 'bg-blue-500';
+      case 'accepted': return 'bg-green-500';
+      case 'ontheway': return 'bg-orange-500';
+      case 'arrived': return 'bg-purple-500';
+      case 'inprogress': return 'bg-primary';
+      case 'completed': return 'bg-green-600';
+      default: return 'bg-gray-500';
     }
   };
+
+  if (!isAuthenticated || isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-stone">
       <Navbar />
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="bg-primary text-white p-6 rounded-xl mb-8">
-          <div className="flex items-center justify-between">
+      {/* Header Section */}
+      <section className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Hai, {user.firstName || 'Teknisi'}!</h1>
-              <p className="text-teal-100">Status: Aktif</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Dashboard Worker
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Kelola pesanan dan jadwal kerja Anda
+              </p>
             </div>
-            <div className="text-right">
-              <p className="text-teal-100 text-sm">Hari ini</p>
-              <p className="text-2xl font-bold">Rp {todayEarnings.toLocaleString()}</p>
+            <div className="mt-4 md:mt-0 flex items-center space-x-4">
+              <Badge className={`${getStatusColor(worker?.availability || 'offline')} text-white`}>
+                {worker?.availability?.toUpperCase() || 'OFFLINE'}
+              </Badge>
+              <Select value={selectedStatus} onValueChange={(value) => {
+                setSelectedStatus(value);
+                statusMutation.mutate(value);
+              }}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="busy">Busy</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{todayOrders.length}</p>
-              <p className="text-sm text-gray-600">Tugas Hari Ini</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{completedToday}</p>
-              <p className="text-sm text-gray-600">Selesai</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <DollarSign className="w-8 h-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold">Rp {todayEarnings.toLocaleString()}</p>
-              <p className="text-sm text-gray-600">Pendapatan</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold">4.8</p>
-              <p className="text-sm text-gray-600">Rating</p>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Stats Cards */}
+      <section className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Pesanan</p>
+                    <p className="text-2xl font-bold text-gray-900">{worker?.totalOrders || 0}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Active Task */}
-        {activeOrder && (
-          <Card className="mb-8 border-2 border-primary">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Rating</p>
+                    <p className="text-2xl font-bold text-gray-900">{worker?.averageRating || 0}</p>
+                  </div>
+                  <Star className="w-8 h-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pendapatan Bulan Ini</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      Rp {(worker?.monthlyEarnings || 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Pesanan Hari Ini</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {assignedOrders?.filter((order: any) => 
+                        new Date(order.createdAt).toDateString() === new Date().toDateString()
+                      ).length || 0}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orders Section */}
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-                <span>Tugas Aktif</span>
-              </CardTitle>
+              <CardTitle>Pesanan Saya</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-lg">{activeOrder.trackingId}</p>
-                    <p className="text-gray-600">{activeOrder.service?.name || 'Layanan'}</p>
-                  </div>
-                  <Badge className={`${getStatusColor(activeOrder.status)} text-white`}>
-                    {getStatusText(activeOrder.status)}
-                  </Badge>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">
-                      {activeOrder.customerInfo?.address || 'Alamat tidak tersedia'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">
-                      {activeOrder.customerInfo?.phone || 'Nomor tidak tersedia'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm">
-                      {new Date(activeOrder.scheduledTime).toLocaleTimeString('id-ID', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })} WIB
-                    </span>
-                  </div>
-                </div>
+                {assignedOrders?.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">Belum ada pesanan</p>
+                ) : (
+                  assignedOrders?.map((order: any) => {
+                    const ServiceIcon = getServiceIcon(order.service?.category || 'cuci_motor');
+                    const customerInfo = typeof order.customerInfo === 'string' 
+                      ? JSON.parse(order.customerInfo) 
+                      : order.customerInfo || {};
+                    
+                    return (
+                      <div key={order.id} className="border rounded-lg p-4 hover:shadow-lg transition-shadow">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <ServiceIcon className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{order.service?.name}</h4>
+                              <p className="text-sm text-gray-600">#{order.trackingId}</p>
+                            </div>
+                          </div>
+                          <Badge className={`${getOrderStatusColor(order.status)} text-white`}>
+                            {order.status.toUpperCase()}
+                          </Badge>
+                        </div>
 
-                <div className="flex space-x-2 pt-4">
-                  <Button className="flex-1 bg-green-500 hover:bg-green-600">
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Navigasi
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Phone className="w-4 h-4 mr-2" />
-                    Hubungi
-                  </Button>
-                </div>
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Customer</p>
+                            <p className="font-medium">{customerInfo.name || 'Unknown Customer'}</p>
+                            <p className="text-sm text-gray-600">{customerInfo.phone}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Alamat</p>
+                            <p className="text-sm">{customerInfo.address}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <span className="text-lg font-bold text-primary">
+                              Rp {(order.finalAmount || 0).toLocaleString()}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {order.estimatedDuration} menit
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            {order.status === 'assigned' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => orderActionMutation.mutate({ orderId: order.id, action: 'reject' })}
+                                  disabled={orderActionMutation.isPending}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Tolak
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => orderActionMutation.mutate({ orderId: order.id, action: 'accept' })}
+                                  disabled={orderActionMutation.isPending}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Terima
+                                </Button>
+                              </>
+                            )}
+                            
+                            {(order.status === 'accepted' || order.status === 'ontheway') && (
+                              <Button size="sm" variant="outline">
+                                <Navigation className="w-4 h-4 mr-1" />
+                                Navigasi
+                              </Button>
+                            )}
+                            
+                            <Button size="sm" variant="outline">
+                              <Phone className="w-4 h-4 mr-1" />
+                              Call
+                            </Button>
+                            
+                            <Button size="sm" variant="outline">
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              Chat
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Today's Tasks */}
-        <TaskList orders={todayOrders} isLoading={ordersLoading} />
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
