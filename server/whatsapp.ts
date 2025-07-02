@@ -1,6 +1,6 @@
 import axios from 'axios';
 import crypto from 'crypto';
-import { storage } from './storage';
+import { storage } from './firebase-storage';
 import { processCustomerMessage } from './gemini';
 
 // YCloud Configuration

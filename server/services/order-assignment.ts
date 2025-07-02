@@ -1,4 +1,4 @@
-import { storage } from '../storage';
+import { storage } from '../firebase-storage';
 import type { Worker, Order, Service } from '@shared/schema';
 
 interface AssignmentScore {
