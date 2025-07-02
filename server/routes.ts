@@ -7,7 +7,7 @@ import { insertOrderSchema, insertServiceSchema, insertConversationSchema } from
 import { z } from "zod";
 import { processCustomerMessage, generateOrderSummary, analyzeCustomerSentiment } from "./gemini";
 import { orderAssignmentService } from "./services/order-assignment";
-import { authService } from "./auth";
+import { firebaseAuthService } from "./firebase-auth";
 import { whatsAppService } from "./whatsapp";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -34,7 +34,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'Nomor telepon diperlukan' });
       }
 
-      const result = await authService.sendOTP(phoneNumber);
+      const result = await firebaseAuthService.sendOTP(phoneNumber);
       res.json(result);
     } catch (error) {
       console.error("Error sending OTP:", error);
@@ -49,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'Nomor telepon dan OTP diperlukan' });
       }
 
-      const result = await authService.verifyOTPAndLogin(phoneNumber, otp, userData);
+      const result = await firebaseAuthService.verifyOTPAndLogin(phoneNumber, otp, userData);
       res.json(result);
     } catch (error) {
       console.error("Error verifying OTP:", error);
@@ -64,7 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: 'Email/telepon dan password diperlukan' });
       }
 
-      const result = await authService.login(identifier, password);
+      const result = await firebaseAuthService.login(identifier, password);
       res.json(result);
     } catch (error) {
       console.error("Error logging in:", error);
@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/register', async (req, res) => {
     try {
       const userData = req.body;
-      const result = await authService.register(userData);
+      const result = await firebaseAuthService.register(userData);
       res.json(result);
     } catch (error) {
       console.error("Error registering user:", error);
