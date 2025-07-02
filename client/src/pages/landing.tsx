@@ -122,10 +122,10 @@ export default function Landing() {
                 <Button 
                   size="lg" 
                   className="bg-white text-primary hover:bg-gray-100 hover:text-primary transition-all duration-300 font-semibold"
-                  onClick={() => window.location.href = "/api/login"}
+                  onClick={() => window.location.href = "/auth"}
                 >
                   <MessageSquare className="w-5 h-5 mr-3" />
-                  Pesan via WhatsApp
+                  Login & Pesan Sekarang
                 </Button>
                 <Button 
                   size="lg" 

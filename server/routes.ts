@@ -7,6 +7,8 @@ import { insertOrderSchema, insertServiceSchema, insertConversationSchema } from
 import { z } from "zod";
 import { processCustomerMessage, generateOrderSummary, analyzeCustomerSentiment } from "./gemini";
 import { orderAssignmentService } from "./services/order-assignment";
+import { authService } from "./auth";
+import { whatsAppService } from "./whatsapp";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -21,6 +23,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // WhatsApp Authentication Routes
+  app.post('/api/auth/send-otp', async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      if (!phoneNumber) {
+        return res.status(400).json({ success: false, message: 'Nomor telepon diperlukan' });
+      }
+
+      const result = await authService.sendOTP(phoneNumber);
+      res.json(result);
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem' });
+    }
+  });
+
+  app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+      const { phoneNumber, otp, userData } = req.body;
+      if (!phoneNumber || !otp) {
+        return res.status(400).json({ success: false, message: 'Nomor telepon dan OTP diperlukan' });
+      }
+
+      const result = await authService.verifyOTPAndLogin(phoneNumber, otp, userData);
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying OTP:", error);
+      res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { identifier, password } = req.body;
+      if (!identifier || !password) {
+        return res.status(400).json({ success: false, message: 'Email/telepon dan password diperlukan' });
+      }
+
+      const result = await authService.login(identifier, password);
+      res.json(result);
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem' });
+    }
+  });
+
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const userData = req.body;
+      const result = await authService.register(userData);
+      res.json(result);
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ success: false, message: 'Terjadi kesalahan sistem' });
+    }
+  });
+
+  // WhatsApp Webhook Route
+  app.post('/api/whatsapp/webhook', async (req, res) => {
+    try {
+      // Verify webhook signature (in production)
+      // const signature = req.headers['x-signature'];
+      // const isValid = whatsAppService.verifyWebhookSignature(
+      //   JSON.stringify(req.body), 
+      //   signature, 
+      //   process.env.WHATSAPP_WEBHOOK_SECRET
+      // );
+      // if (!isValid) {
+      //   return res.status(401).json({ error: 'Invalid signature' });
+      // }
+
+      await whatsAppService.processWebhook(req.body);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error processing WhatsApp webhook:", error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // WhatsApp webhook verification (for YCloud setup)
+  app.get('/api/whatsapp/webhook', (req, res) => {
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'tuntas-kilat-verify-token';
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode === 'subscribe' && token === verifyToken) {
+      console.log('WhatsApp webhook verified');
+      res.status(200).send(challenge);
+    } else {
+      res.status(403).send('Forbidden');
     }
   });
 

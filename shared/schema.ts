@@ -34,10 +34,13 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phoneNumber: varchar("phone_number").unique(),
+  password: varchar("password"), // For email/password login
   role: varchar("role", { enum: ['customer', 'worker', 'admin_umum', 'admin_perusahaan'] }).default('customer'),
   membershipLevel: varchar("membership_level", { enum: ['regular', 'silver', 'gold'] }).default('regular'),
   orderCount: integer("order_count").default(0),
   totalSpent: decimal("total_spent", { precision: 10, scale: 2 }).default('0'),
+  isEmailVerified: boolean("is_email_verified").default(false),
+  isPhoneVerified: boolean("is_phone_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
