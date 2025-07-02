@@ -13,10 +13,10 @@ export interface ChatbotResponse {
 
 export async function processCustomerMessage(message: string, context?: any): Promise<ChatbotResponse> {
   try {
-    const systemPrompt = `Anda adalah asisten virtual Ambon Gercep, platform layanan cuci kendaraan dan potong rumput terpercaya.
+    const systemPrompt = `Anda adalah asisten virtual Tuntas Kilat, platform layanan cuci kendaraan dan potong rumput terpercaya.
 
 IDENTITAS & KEPRIBADIAN:
-- Nama: Gercep Assistant
+- Nama: Tuntas Kilat Assistant
 - Bahasa: Bahasa Indonesia yang ramah dan profesional
 - Kepribadian: Helpful, cepat tanggap, dan customer-focused
 

@@ -257,7 +257,7 @@ export default function Landing() {
             Siap Merasakan Layanan Terbaik?
           </h2>
           <p className="text-xl text-teal-100 mb-8">
-            Bergabung dengan ribuan pelanggan yang sudah merasakan kemudahan dan kualitas layanan Ambon Gercep
+            Bergabung dengan ribuan pelanggan yang sudah merasakan kemudahan dan kualitas layanan Tuntas Kilat
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -289,7 +289,7 @@ export default function Landing() {
                   <Car className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Ambon Gercep</h3>
+                  <h3 className="text-xl font-bold">Tuntas Kilat</h3>
                   <p className="text-sm text-gray-400">Service On Demand</p>
                 </div>
               </div>
@@ -341,7 +341,7 @@ export default function Landing() {
           </div>
 
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Ambon Gercep. All rights reserved.</p>
+            <p>&copy; 2024 Tuntas Kilat. All rights reserved.</p>
           </div>
         </div>
       </footer>
@@ -360,6 +360,7 @@ export default function Landing() {
       {/* WhatsApp Chat Dialog */}
       <Dialog open={showChat} onOpenChange={setShowChat}>
         <DialogContent className="sm:max-w-md p-0 bg-transparent border-none shadow-none">
+          <DialogTitle className="sr-only">Chat dengan Tuntas Kilat Assistant</DialogTitle>
           <div className="relative">
             <Button
               variant="ghost"

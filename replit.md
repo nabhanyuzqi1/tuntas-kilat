@@ -1,8 +1,8 @@
-# Ambon Gercep - Service-on-Demand Platform
+# Tuntas Kilat - Service-on-Demand Platform
 
 ## Overview
 
-Ambon Gercep is a comprehensive service-on-demand platform that provides car wash, motorcycle wash, and lawn mowing services through a WhatsApp-based booking system. The application features a modern React frontend with Express.js backend, utilizing Drizzle ORM for database management and PostgreSQL for data storage.
+Tuntas Kilat is a comprehensive service-on-demand platform that provides car wash, motorcycle wash, and lawn mowing services through a WhatsApp-based booking system. The application features a modern React frontend with Express.js backend, utilizing Drizzle ORM for database management and PostgreSQL for data storage.
 
 ## System Architecture
 

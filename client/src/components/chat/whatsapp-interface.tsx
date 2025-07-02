@@ -29,7 +29,7 @@ export default function WhatsAppInterface() {
     {
       id: '1',
       sender: 'ai',
-      content: 'Halo! Saya Gercep Assistant 👋\nSaya bisa membantu Anda memesan layanan cuci kendaraan dan potong rumput.\n\nMau pesan layanan apa hari ini?',
+      content: 'Halo! Saya Tuntas Kilat Assistant 👋\nSaya bisa membantu Anda memesan layanan cuci kendaraan dan potong rumput.\n\nMau pesan layanan apa hari ini?',
       timestamp: new Date(),
       quickReplies: ['🏍️ Cuci Motor', '🚗 Cuci Mobil', '🌿 Potong Rumput', '💰 Lihat Harga']
     }

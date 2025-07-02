@@ -44,7 +44,7 @@ export default function Logo({ size = "md", showText = true, className = "" }: L
       {showText && (
         <div>
           <h1 className={`${textSizes[size]} font-bold text-gray-900 leading-tight`}>
-            Ambon Gercep
+            Tuntas Kilat
           </h1>
           {size !== "sm" && (
             <p className="text-xs text-gray-500 -mt-1">Service On Demand</p>
