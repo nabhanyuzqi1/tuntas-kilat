@@ -32,8 +32,8 @@ export default function Navbar() {
   const navigation = [
     { name: 'Beranda', href: '/', current: location === '/', isAnchor: false },
     { name: 'Layanan', href: '/services', current: location === '/services', isAnchor: false },
-    { name: 'Lacak Pesanan', href: '/tracking', current: location.startsWith('/tracking'), isAnchor: false },
     { name: 'Tentang', href: '/about', current: location === '/about', isAnchor: false },
+    { name: 'Lacak Pesanan', href: '/tracking', current: location.startsWith('/tracking'), isAnchor: false },
   ];
 
   const userNavigation = [
@@ -155,7 +155,7 @@ export default function Navbar() {
             ) : (
               <Link href="/auth">
                 <Button className="btn-primary">
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                  <MessageSquare className="w-4 h-4 mr-2 text-white" />
                   Masuk
                 </Button>
               </Link>

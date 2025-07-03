@@ -1,13 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage-simple";
+import { storage } from "./supabase-storage";
 import { z } from "zod";
 import { processCustomerMessage, generateOrderSummary, analyzeCustomerSentiment } from "./gemini";
 import { quickAuthFix } from "./quick-auth-fix";
 import { firebaseAuthService } from "./firebase-auth";
 import { sessionStorage as userSessionStorage } from "./session-storage";
 import bcrypt from "bcryptjs";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
+import fs from 'fs/promises';
+import { exec } from 'child_process';
 
 // Validation schemas
 const insertOrderSchema = z.object({
@@ -44,6 +47,120 @@ const insertConversationSchema = z.object({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+
+  const tools = {
+    readFile: async (path: string) => {
+      try {
+        const data = await fs.readFile(path, 'utf-8');
+        return { success: true, content: data };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    },
+    writeFile: async (path: string, content: string) => {
+      try {
+        await fs.writeFile(path, content, 'utf-8');
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    },
+    exec: async (command: string) => {
+      return new Promise((resolve) => {
+        exec(command, (error, stdout, stderr) => {
+          if (error) {
+            resolve({ success: false, error: error.message, stdout, stderr });
+          } else {
+            resolve({ success: true, stdout, stderr });
+          }
+        });
+      });
+    },
+  };
+
+  app.post('/api/agent', async (req, res) => {
+    const { code, userPrompt } = req.body;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+
+    const prompt = `
+    You are an expert AI programmer.
+    A user has provided the following code:
+    \`\`\`
+    ${code}
+    \`\`\`
+    And the following prompt:
+    "${userPrompt}"
+
+    Based on the prompt, perform one of the following actions:
+    1.  **If the user wants to create, write, or fix code:** Modify the provided code and return ONLY the complete, updated code block.
+    2.  **If the user wants to review or summarize the code:** Provide a concise summary or review.
+    3.  **If the user asks a general question:** Provide a helpful answer.
+  `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      res.json({ result: text });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to generate content from Gemini" });
+    }
+  });
+
+  app.post('/api/agent/execute', async (req, res) => {
+    const { userPrompt, history } = req.body;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+
+    const conversation = model.startChat({
+      history: history || [],
+    });
+
+    try {
+      let result = await conversation.sendMessage(userPrompt);
+
+      while (true) {
+        const response = result.response;
+        const functionCalls = response.functionCalls();
+
+        if (functionCalls) {
+          const toolCallResponses: Part[] = [];
+          for (const call of functionCalls) {
+            const { name, args } = call;
+            // @ts-ignore
+            const tool = tools[name];
+            if (tool) {
+              const toolResult = await tool(args);
+              toolCallResponses.push({
+                functionResponse: {
+                  name: name,
+                  response: toolResult,
+                }
+              });
+            } else {
+              toolCallResponses.push({
+                functionResponse: {
+                  name: name,
+                  response: { success: false, error: `Tool ${name} not found` },
+                }
+              });
+            }
+          }
+          result = await conversation.sendMessage(toolCallResponses);
+        } else {
+          res.json({ result: response.text() });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to generate content from Gemini" });
+    }
+  });
 
   // Authentication middleware
   const authMiddleware = async (req: any, res: any, next: any) => {
@@ -258,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Orders
   app.get('/api/orders', authMiddleware, async (req: any, res) => {
     try {
-      let orders;
+      let orders: any[];
       if (req.user.role === 'customer') {
         orders = await storage.getOrdersByCustomer(req.user.id);
       } else if (req.user.role === 'worker') {
@@ -410,8 +527,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Worker not found' });
       }
 
-      const updatedWorker = await storage.updateWorker(worker.id, { availability });
-      res.json(updatedWorker);
+      // Update worker availability using the Supabase storage layer
+      const updatedWorker = await storage.updateWorker(worker.id, {
+        ...worker,
+        availability: availability
+      });
+      
+      res.json({ success: true, worker: updatedWorker });
     } catch (error) {
       console.error('Update worker availability error:', error);
       res.status(500).json({ error: 'Failed to update availability' });
@@ -489,8 +611,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'assigned'
       });
 
-      // Update worker status to busy
-      await storage.updateWorker(workerId, { availability: 'busy' });
+      // Update worker availability to busy
+      await storage.updateWorker(workerId, {
+        ...worker,
+        availability: 'busy'
+      });
 
       res.json(updatedOrder);
     } catch (error) {
@@ -546,13 +671,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const services = await storage.getServices();
-      const popularServices = services.slice(0, 5); // Top 5 services
+      // Get comprehensive analytics data from all sources
+      const [orderStats, revenueStats, workerStats, services] = await Promise.all([
+        storage.getOrderStats(),
+        storage.getRevenueStats(),
+        storage.getWorkerStats(),
+        storage.getServices()
+      ]);
 
-      const stats = {
+      // Process service statistics
+      const popularServices = services.slice(0, 5); // Top 5 services
+      const serviceStats = {
         popularServices,
         totalServices: services.length,
         activeServices: services.filter(s => s.active).length
+      };
+
+      // Combine all statistics
+      const stats = {
+        orders: orderStats,
+        revenue: revenueStats,
+        workers: workerStats,
+        services: serviceStats
       };
 
       res.json(stats);
@@ -568,7 +708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws: WebSocket) => {
     console.log('🔌 WebSocket client connected');
 
-    ws.on('message', async (data) => {
+    ws.on('message', async (data: any) => {
       try {
         const message = JSON.parse(data.toString());
         

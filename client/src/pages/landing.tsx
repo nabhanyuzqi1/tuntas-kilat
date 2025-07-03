@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import Navbar from "@/components/layout/navbar";
 import ServiceCard from "@/components/services/service-card";
 import WhatsAppInterface from "@/components/chat/whatsapp-interface";
 import { Link } from "wouter";
@@ -104,8 +103,6 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-stone">
-      <Navbar />
-      
       {/* Hero Section */}
       <section className="gradient-primary text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

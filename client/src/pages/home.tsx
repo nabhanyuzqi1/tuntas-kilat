@@ -18,8 +18,10 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { WhatsAppFloatingButton, WhatsAppQuickShareCard } from "@/components/whatsapp/quick-share-button";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 
 export default function Home() {
+  const { user } = useSimpleAuth();
 
   const { data: services } = useQuery({
     queryKey: ["/api/services"],
@@ -97,13 +99,8 @@ export default function Home() {
     }
   };
 
-  const membershipColor = user?.membershipLevel === 'gold' ? 'bg-yellow-500' : 
-                         user?.membershipLevel === 'silver' ? 'bg-gray-400' : 'bg-bronze-500';
-
   return (
     <div className="min-h-screen bg-stone">
-      <Navbar />
-      
       {/* Firebase Status */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <FirebaseStatus />
@@ -122,11 +119,11 @@ export default function Home() {
               </p>
             </div>
             <div className="mt-4 md:mt-0 flex items-center space-x-4">
-              <Badge className={`${membershipColor} text-white`}>
-                {user?.membershipLevel?.toUpperCase() || 'REGULAR'} Member
+              <Badge className="bg-blue-500 text-white">
+                {user?.role?.toUpperCase() || 'CUSTOMER'}
               </Badge>
               <span className="text-sm text-gray-500">
-                Total pesanan: {user?.orderCount || 0}
+                Status: Active
               </span>
             </div>
           </div>
@@ -167,7 +164,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {recentOrders && recentOrders.length > 0 ? (
+          {recentOrders && Array.isArray(recentOrders) && recentOrders.length > 0 ? (
             <div className="space-y-4">
               {recentOrders.slice(0, 3).map((order: any) => {
                 const ServiceIcon = getServiceIcon(order.service?.category || 'cuci_mobil');
@@ -234,35 +231,41 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Layanan Tersedia</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            {services?.map((service: any) => {
-              const ServiceIcon = getServiceIcon(service.category);
-              return (
-                <Card key={service.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <ServiceIcon className="w-6 h-6 text-primary" />
+            {services && Array.isArray(services) && services.length > 0 ? (
+              services.map((service: any) => {
+                const ServiceIcon = getServiceIcon(service.category);
+                return (
+                  <Card key={service.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <ServiceIcon className="w-6 h-6 text-primary" />
+                        </div>
+                        {service.category === 'cuci_mobil' && (
+                          <Badge variant="secondary">Populer</Badge>
+                        )}
                       </div>
-                      {service.category === 'cuci_mobil' && (
-                        <Badge variant="secondary">Populer</Badge>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h3>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="text-2xl font-bold text-primary">
-                        Rp {service.basePrice}
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h3>
+                      <p className="text-gray-600 mb-4">{service.description}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="text-2xl font-bold text-primary">
+                          Rp {service.basePrice}
+                        </div>
+                        <Link href="/booking">
+                          <Button size="sm">
+                            Pesan
+                          </Button>
+                        </Link>
                       </div>
-                      <Link href="/booking">
-                        <Button size="sm">
-                          Pesan
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <p>Tidak ada layanan yang tersedia saat ini</p>
+              </div>
+            )}
           </div>
         </div>
       </section>

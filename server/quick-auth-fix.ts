@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
+import { storage } from './supabase-storage'
+
 // Quick fix for authentication - simple in-memory auth system
 interface OTPData {
   phone: string
@@ -10,66 +12,12 @@ interface OTPData {
 }
 
 class QuickAuthFix {
-  private users = new Map<string, any>()
   private otpStorage = new Map<string, OTPData>()
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'tuntas-kilat-fallback-secret'
   private readonly OTP_EXPIRY_MINUTES = 5
 
   constructor() {
-    this.initializeTestUsers()
-  }
-
-  private async initializeTestUsers() {
-    const testUsers = [
-      {
-        id: 'admin-company-1',
-        email: 'nabhanyuzqi1@gmail.com',
-        password: '@Yuzqi07070',
-        firstName: 'Admin',
-        lastName: 'Perusahaan',
-        phone: '085950202227',
-        role: 'admin_perusahaan'
-      },
-      {
-        id: 'admin-general-1', 
-        email: 'nabhanyuzqi2@gmail.com',
-        password: '@Yuzqi07070',
-        firstName: 'Admin',
-        lastName: 'Umum',
-        phone: '085950202228',
-        role: 'admin_umum'
-      },
-      {
-        id: 'worker-1',
-        email: 'nabhanyuzqi3@gmail.com', 
-        password: '@Yuzqi07070',
-        firstName: 'Worker',
-        lastName: 'Test',
-        phone: '085950202229',
-        role: 'worker'
-      },
-      {
-        id: 'customer-1',
-        email: 'customer@tuntaskilat.com',
-        password: '@Yuzqi07070', 
-        firstName: 'Customer',
-        lastName: 'Test',
-        phone: '085950202230',
-        role: 'customer'
-      }
-    ]
-
-    for (const userData of testUsers) {
-      const hashedPassword = await bcrypt.hash(userData.password, 10)
-      const user = {
-        ...userData,
-        password: hashedPassword,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      this.users.set(user.id, user)
-      console.log(`✅ Test user initialized: ${user.email} (${user.role})`)
-    }
+    // Test users are now managed in Supabase
   }
 
   generateToken(user: any): string {
@@ -98,28 +46,25 @@ class QuickAuthFix {
       const { email, password, firstName, lastName, phone } = userData
       
       // Check if user exists
-      const existingUser = Array.from(this.users.values()).find(u => u.email === email)
+      const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         return { success: false, message: 'Email sudah terdaftar' }
       }
 
       // Hash password and create user
       const hashedPassword = await bcrypt.hash(password, 10)
-      const user = {
-        id: `user-${Date.now()}`,
+      const userToInsert = {
         email,
         password: hashedPassword,
         firstName,
         lastName,
         phone,
-        role: 'customer',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        role: 'customer' as const,
       }
 
-      // Store user
-      this.users.set(user.id, user)
-      console.log(`✅ User stored with password hash: ${email}`)
+      // Store user in Supabase
+      const user = await storage.upsertUser(userToInsert);
+      console.log(`✅ User stored in Supabase: ${email}`)
 
       const token = this.generateToken(user)
 
@@ -139,14 +84,14 @@ class QuickAuthFix {
     try {
       console.log(`🔐 Login attempt: ${identifier}`)
       
-      // Find user
-      const user = Array.from(this.users.values()).find(u => 
-        u.email === identifier || u.phone === identifier
-      )
+      // Find user in Supabase
+      const user = identifier.includes('@')
+        ? await storage.getUserByEmail(identifier)
+        : await storage.getUserByPhone(identifier);
 
-      if (!user) {
-        console.log(`❌ User not found: ${identifier}`)
-        return { success: false, message: 'User tidak ditemukan' }
+      if (!user || !user.password) {
+        console.log(`❌ User not found or no password: ${identifier}`)
+        return { success: false, message: 'User tidak ditemukan atau password tidak diatur' }
       }
 
       // Verify password
@@ -176,7 +121,7 @@ class QuickAuthFix {
       const decoded = this.verifyToken(token)
       if (!decoded) return null
 
-      const user = this.users.get(decoded.userId)
+      const user = await storage.getUser(decoded.userId);
       return user ? { ...user, password: undefined } : null
     } catch (error) {
       return null
@@ -234,21 +179,18 @@ class QuickAuthFix {
       otpData.verified = true
 
       // Find existing user or create new one
-      let user = Array.from(this.users.values()).find(u => u.phone === phoneNumber)
+      let user = await storage.getUserByPhone(phoneNumber);
       
       if (!user) {
-        // Create new user
-        const userId = `user-${Date.now()}`
-        user = {
-          id: userId,
+        // Create new user with default first and last name if not provided
+        const userToInsert = {
           phone: phoneNumber,
-          firstName: userData?.firstName || 'Customer',
-          lastName: userData?.lastName || '',
-          role: 'customer',
-          createdAt: new Date().toISOString()
+          firstName: userData?.firstName || 'Pengguna', // Default to 'Pengguna'
+          lastName: userData?.lastName || 'WhatsApp', // Default to 'WhatsApp'
+          role: 'customer' as const,
         }
-        this.users.set(userId, user)
-        console.log(`✅ New user created via WhatsApp: ${phoneNumber}`)
+        user = await storage.upsertUser(userToInsert);
+        console.log(`✅ New user created via WhatsApp in Supabase: ${phoneNumber}`)
       }
 
       // Generate token
@@ -271,21 +213,19 @@ class QuickAuthFix {
 
   private cleanExpiredOTPs(): void {
     const now = new Date()
-    for (const [phone, otpData] of this.otpStorage.entries()) {
+    this.otpStorage.forEach((otpData, phone) => {
       if (now > otpData.expiresAt) {
-        this.otpStorage.delete(phone)
+        this.otpStorage.delete(phone);
       }
-    }
+    });
   }
 
   // Debug method
-  getAllUsers() {
-    return Array.from(this.users.values()).map(u => ({
-      id: u.id,
-      email: u.email,
-      phone: u.phone,
-      hasPassword: !!u.password
-    }))
+  async getAllUsers() {
+    // This method would now need to query Supabase, which might not be desirable
+    // for a simple debug method. It's better to query Supabase directly if needed.
+    console.warn("getAllUsers is deprecated as it's no longer using in-memory data.");
+    return [];
   }
 }
 

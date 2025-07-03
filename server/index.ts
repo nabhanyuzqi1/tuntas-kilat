@@ -4,6 +4,9 @@ dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes-supabase";
 
+// Add these lines at the top
+import cors from 'cors';
+
 function log(message: string, source = "express") {
   const timestamp = new Date().toLocaleTimeString();
   console.log(`${timestamp} [${source}] ${message}`);
@@ -13,12 +16,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Enable CORS for all routes
+app.use(cors());
+
 // Health check endpoint for Firebase App Hosting
 app.get('/health', (_req, res) => {
-  res.status(200).json({ 
-    status: 'healthy', 
+  res.status(200).json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'tuntas-kilat-api' 
+    service: 'tuntas-kilat-api'
   });
 });
 
@@ -49,15 +55,15 @@ app.get('/health', (_req, res) => {
     // Production: serve static files without vite dependencies
     const path = await import("path");
     const fs = await import("fs");
-    
+
     // Try to serve static files from dist/public
     const staticPath = path.resolve(process.cwd(), "dist", "public");
     const indexPath = path.join(staticPath, "index.html");
-    
+
     if (fs.existsSync(indexPath)) {
       log(`Static files served from: ${staticPath}`);
       app.use(express.static(staticPath));
-      
+
       // Serve index.html for all non-API routes
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api/')) {

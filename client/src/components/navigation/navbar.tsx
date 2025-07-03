@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useLocation } from 'wouter';
 import { LogOut, User as UserIcon, Settings, Home, Briefcase, Shield } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useSimpleAuth } from '@/hooks/useSimpleAuth';
 
 interface User {
   id: string;
@@ -22,33 +22,10 @@ interface User {
 
 export function Navbar() {
   const [location, setLocation] = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    const userStr = localStorage.getItem('user');
-    
-    if (token && userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        setIsAuthenticated(true);
-        setUser(userData);
-      } catch {
-        setIsAuthenticated(false);
-        setUser(null);
-      }
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-  }, [location]);
+  const { user, isAuthenticated, logout } = useSimpleAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    setUser(null);
+    logout();
     setLocation('/auth');
   };
 

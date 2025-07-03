@@ -17,8 +17,8 @@ export function useAuth() {
   });
 
   return {
-    user: null, // For now, assume no user until login is implemented
-    isLoading: false,
-    isAuthenticated: false,
+    user,
+    isLoading,
+    isAuthenticated: !!user,
   };
 }
